@@ -1,0 +1,4296 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Free AI Chat · Multimodal</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <style>
+        /* ── reset & base ── */
+        html,
+        body {
+            height: 100% !important;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        .sidebar,
+        .main-content {
+            height: 100% !important;
+        }
+        .header {
+            flex-shrink: 0;
+        }
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        /* ── dark theme ── */
+        :root {
+            --primary-color: #0099ff;
+            --secondary-color: #1e1e2f;
+            --text-color: #e0e0e0;
+            --light-text: #a0a0b8;
+            --bg-color: #0d0d1a;
+            --white: #181825;
+            --border-color: #2a2a3e;
+            --user-msg-color: #003d66;
+            --ai-msg-color: #1a1a2e;
+            --shadow: 0 2px 15px rgba(0, 153, 255, 0.15);
+            --wechat-green: #0099ff;
+            --border-radius: 8px;
+            --chat-font-size: 14px;
+            --tech-blue: #0099ff;
+            --tech-dark-blue: #0077cc;
+            --tech-light-blue: #0a2a44;
+            --tech-grey: #1a1a2e;
+            --neon-blue: #00c3ff;
+            --neon-purple: #9d00ff;
+            --neon-cyan: #00fff2;
+            --tech-bg-dark: #0d0d1a;
+            --tech-bg-light: #181825;
+            --hologram-blue: rgba(0, 195, 255, 0.08);
+            --glow-shadow: 0 0 15px rgba(0, 195, 255, 0.25);
+            --matrix-green: #00ff41;
+            --cyber-yellow: #ffdd00;
+            --digital-pattern: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231e88e5' fill-opacity='0.04'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'PingFang SC', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+            background-image: radial-gradient(var(--border-color) 1px, transparent 1px), var(--digital-pattern);
+            background-size: 25px 25px, 60px 60px;
+            position: relative;
+        }
+        body::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            background-image:
+                linear-gradient(to right, transparent 49.5%, rgba(0, 153, 255, 0.03) 50%, transparent 50.5%),
+                linear-gradient(to bottom, transparent 49.5%, rgba(0, 153, 255, 0.03) 50%, transparent 50.5%);
+            background-size: 40px 40px;
+            z-index: -1;
+        }
+
+        /* ── scrollbar hide ── */
+        .chat-list,
+        .chat-area,
+        .dropdown-menu,
+        .message-input {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+        }
+        .chat-list::-webkit-scrollbar,
+        .chat-area::-webkit-scrollbar,
+        .dropdown-menu::-webkit-scrollbar,
+        .message-input::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* ── sidebar ── */
+        .sidebar {
+            width: 280px;
+            background-color: var(--white);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            transition: transform 0.3s ease;
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            z-index: 10;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            background-image: linear-gradient(145deg, rgba(0, 195, 255, 0.04) 0%, transparent 100%);
+            border-right: 1px solid rgba(0, 153, 255, 0.12);
+        }
+        .sidebar.hidden {
+            transform: translateX(-100%);
+        }
+
+        .sidebar-header {
+            padding: 15px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: var(--secondary-color);
+            position: relative;
+            overflow: hidden;
+            background-image: linear-gradient(90deg, rgba(0, 153, 255, 0.06) 0%, transparent 100%);
+        }
+        .sidebar-header::before {
+            content: "";
+            position: absolute;
+            width: 120px;
+            height: 120px;
+            background: radial-gradient(circle, var(--neon-blue) 0%, transparent 70%);
+            opacity: 0.15;
+            top: -60px;
+            left: -60px;
+            animation: pulse-glow 8s infinite alternate;
+            pointer-events: none;
+        }
+        @keyframes pulse-glow {
+            0%,
+            100% {
+                opacity: 0.08;
+            }
+            50% {
+                opacity: 0.2;
+            }
+        }
+
+        .sidebar-title {
+            font-size: 18px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+            position: relative;
+            text-shadow: 0 0 8px rgba(0, 153, 255, 0.25);
+        }
+        .sidebar-title a {
+            text-decoration: none;
+            color: inherit;
+        }
+        .sidebar-title a span {
+            color: var(--neon-blue);
+        }
+        .sidebar-title small {
+            font-size: 11px;
+            opacity: 0.6;
+            font-weight: normal;
+        }
+
+        .sidebar-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+            z-index: 1;
+        }
+        .sidebar-header-actions button {
+            background: none;
+            border: none;
+            color: var(--light-text);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            padding: 4px 6px;
+            border-radius: 4px;
+        }
+        .sidebar-header-actions button:hover {
+            color: var(--neon-blue);
+            text-shadow: 0 0 8px var(--neon-blue);
+            background: rgba(0, 195, 255, 0.08);
+        }
+
+        .search-container {
+            padding: 15px 15px 5px 15px;
+            position: relative;
+        }
+        .search-input {
+            width: 100%;
+            padding: 8px 30px 8px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+            background-image: linear-gradient(to right, rgba(0, 153, 255, 0.03), transparent);
+        }
+        .search-input:focus {
+            border-color: var(--neon-blue);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 195, 255, 0.12);
+        }
+        .search-icon {
+            position: absolute;
+            right: 25px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--light-text);
+            font-size: 14px;
+        }
+
+        .new-chat-btn {
+            margin: 5px 15px 15px 15px;
+            padding: 10px;
+            background-color: var(--tech-blue);
+            color: #fff;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            box-shadow: 0 0 15px rgba(0, 153, 255, 0.15);
+        }
+        .new-chat-btn::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            background: linear-gradient(45deg, var(--neon-blue), var(--tech-blue), var(--neon-cyan));
+            z-index: -1;
+            border-radius: var(--border-radius);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .new-chat-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 153, 255, 0.3);
+        }
+        .new-chat-btn:hover::before {
+            opacity: 1;
+        }
+        .new-chat-btn:active {
+            transform: translateY(0);
+        }
+        .new-chat-btn span,
+        .new-chat-btn i {
+            position: relative;
+            z-index: 2;
+        }
+
+        .sci-fi-btn {
+            margin: 1px 15px 15px 15px;
+            padding: 8px 4px;
+            background-color: var(--tech-blue);
+            color: #fff;
+            border: none;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            text-align: center;
+            box-shadow: 0 0 12px rgba(0, 153, 255, 0.15);
+            text-decoration: none;
+            font-size: 13px;
+        }
+        .sci-fi-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+            transition: 0.5s;
+        }
+        .sci-fi-btn:hover {
+            background-color: var(--tech-dark-blue);
+            transform: translateY(-1px);
+            box-shadow: 0 5px 18px rgba(0, 153, 255, 0.25);
+        }
+        .sci-fi-btn:hover::before {
+            left: 100%;
+        }
+        .sci-fi-btn:active {
+            transform: translateY(0);
+        }
+
+        .chat-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .chat-item {
+            padding: 12px;
+            margin-bottom: 5px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            position: relative;
+            transition: all 0.3s ease;
+            border: 1px solid transparent;
+        }
+        .chat-item:hover {
+            background-color: var(--secondary-color);
+            border-color: rgba(0, 153, 255, 0.12);
+            box-shadow: 0 2px 10px rgba(0, 153, 255, 0.06);
+        }
+        .chat-item.active {
+            background-color: var(--tech-light-blue);
+            border-left: 2px solid var(--neon-blue);
+            box-shadow: inset 0 0 12px rgba(0, 153, 255, 0.06);
+        }
+
+        .chat-item-icon {
+            margin-right: 12px;
+            width: 32px;
+            height: 32px;
+            border-radius: var(--border-radius);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: var(--tech-grey);
+            color: var(--text-color);
+            overflow: hidden;
+            position: relative;
+        }
+        .chat-item-icon::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+            animation: shine 4s infinite;
+        }
+        @keyframes shine {
+            0% {
+                left: -100%;
+            }
+            20% {
+                left: 100%;
+            }
+            100% {
+                left: 100%;
+            }
+        }
+        .chat-item-icon img {
+            width: 100%;
+            height: 100%;
+            border-radius: var(--border-radius);
+            object-fit: cover;
+        }
+        .chat-item-title {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 14px;
+            color: var(--text-color);
+        }
+        .chat-item-actions {
+            display: flex;
+            gap: 6px;
+        }
+        .chat-item-pin,
+        .chat-item-delete {
+            color: #666;
+            visibility: hidden;
+            padding: 4px;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+        .chat-item:hover .chat-item-pin,
+        .chat-item:hover .chat-item-delete {
+            visibility: visible;
+        }
+        .chat-item-pin.pinned {
+            visibility: visible;
+            color: var(--neon-blue);
+            text-shadow: 0 0 6px rgba(0, 195, 255, 0.4);
+        }
+        .chat-item-pin:hover {
+            color: var(--neon-blue);
+            transform: scale(1.1);
+        }
+        .chat-item-delete:hover {
+            color: #ff5252;
+            transform: scale(1.1);
+        }
+
+        /* ── main content ── */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            width: 100%;
+            margin-left: 0;
+            transition: margin-left 0.3s ease;
+            background-image: linear-gradient(120deg, rgba(0, 153, 255, 0.02) 0%, transparent 100%);
+        }
+        body:not(.sidebar-hidden) .main-content {
+            margin-left: 280px;
+        }
+
+        /* ── header ── */
+        .header {
+            padding: 12px 16px;
+            background-color: var(--white);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: var(--shadow);
+            z-index: 5;
+            background-image: linear-gradient(to right, rgba(0, 153, 255, 0.04) 0%, transparent 70%);
+            position: relative;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+            opacity: 0.4;
+        }
+
+        .model-selection {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            min-width: 200px;
+        }
+
+        .sidebar-toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: var(--light-text);
+            margin-right: 6px;
+            transition: all 0.3s ease;
+            padding: 4px 6px;
+            border-radius: 4px;
+        }
+        .sidebar-toggle-btn:hover {
+            color: var(--neon-blue);
+            text-shadow: 0 0 8px rgba(0, 195, 255, 0.4);
+            background: rgba(0, 195, 255, 0.06);
+        }
+
+        .home-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            color: var(--light-text);
+            transition: all 0.3s ease;
+            padding: 4px 6px;
+            border-radius: 4px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .home-btn:hover {
+            color: var(--neon-blue);
+            text-shadow: 0 0 8px rgba(0, 195, 255, 0.3);
+            background: rgba(0, 195, 255, 0.06);
+        }
+
+        .dropdown {
+            position: relative;
+            display: inline-block;
+        }
+        .dropdown-toggle {
+            background-color: var(--white);
+            color: var(--text-color);
+            padding: 7px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            font-size: 13px;
+            max-width: 220px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .dropdown-toggle::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+            transform: scaleX(0);
+            transform-origin: center;
+            transition: transform 0.3s ease;
+        }
+        .dropdown-toggle:hover {
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 0 2px rgba(0, 195, 255, 0.08);
+        }
+        .dropdown-toggle:hover::after {
+            transform: scaleX(1);
+        }
+        .dropdown-toggle .fa-chevron-down {
+            font-size: 11px;
+            opacity: 0.6;
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            min-width: 280px;
+            background-color: var(--white);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow), 0 0 20px rgba(0, 153, 255, 0.06);
+            z-index: 999;
+            display: none;
+            padding: 5px 0;
+            max-height: 420px;
+            overflow-y: auto;
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 153, 255, 0.15);
+        }
+        .dropdown-menu.show {
+            display: block;
+            animation: fade-in 0.2s ease;
+        }
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(-8px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dropdown-group {
+            padding: 5px 14px;
+            font-weight: bold;
+            color: var(--neon-blue);
+            border-bottom: 1px solid var(--border-color);
+            margin-top: 4px;
+            font-size: 0.8em;
+            text-shadow: 0 0 6px rgba(0, 195, 255, 0.2);
+            letter-spacing: 0.5px;
+            position: sticky;
+            top: 0;
+            background: var(--white);
+            z-index: 1;
+        }
+        .dropdown-item {
+            padding: 7px 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+            overflow: hidden;
+            font-size: 12px;
+            color: var(--text-color);
+            line-height: 1.5;
+            border-left: 2px solid transparent;
+        }
+        .dropdown-item::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            height: 100%;
+            width: 3px;
+            background-color: var(--neon-blue);
+            transform: scaleY(0);
+            transition: transform 0.2s ease;
+        }
+        .dropdown-item:hover {
+            background-color: var(--tech-light-blue);
+            color: #fff;
+            border-left-color: var(--neon-blue);
+        }
+        .dropdown-item:hover::before {
+            transform: scaleY(1);
+        }
+        .dropdown-item .model-name {
+            font-weight: 600;
+            display: block;
+            font-size: 13px;
+        }
+        .dropdown-item .model-desc {
+            font-size: 11px;
+            opacity: 0.6;
+            display: block;
+        }
+        .dropdown-item .model-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 3px;
+            margin-top: 2px;
+        }
+        .dropdown-item .model-tag {
+            font-size: 9px;
+            padding: 1px 8px;
+            border-radius: 10px;
+            background: rgba(0, 195, 255, 0.10);
+            color: var(--neon-cyan);
+            border: 1px solid rgba(0, 195, 255, 0.08);
+        }
+        .dropdown-item .model-tag.reasoning {
+            background: rgba(0, 195, 255, 0.12);
+            color: var(--neon-cyan);
+        }
+        .dropdown-item .model-tag.vision {
+            background: rgba(157, 0, 255, 0.12);
+            color: #b388ff;
+        }
+        .dropdown-item .model-tag.audio {
+            background: rgba(255, 221, 0, 0.10);
+            color: #ffd54f;
+        }
+        .dropdown-item .model-tag.search {
+            background: rgba(0, 255, 65, 0.08);
+            color: #69f0ae;
+        }
+        .dropdown-item .model-tag.tools {
+            background: rgba(255, 100, 100, 0.10);
+            color: #ff8a80;
+        }
+        .dropdown-item .model-tag.code {
+            background: rgba(100, 200, 255, 0.10);
+            color: #80d8ff;
+        }
+        .dropdown-item .model-tag.paid {
+            color: #ffd54f;
+            background: rgba(255, 221, 0, 0.15);
+            border-color: rgba(255, 221, 0, 0.2);
+            font-weight: 600;
+        }
+        .dropdown-item .model-tag.alpha {
+            color: #ff6b6b;
+            background: rgba(255, 100, 100, 0.10);
+        }
+        .dropdown-item .model-tag.special {
+            color: #ce93d8;
+            background: rgba(206, 147, 216, 0.10);
+        }
+        .dropdown-item .model-context {
+            font-size: 10px;
+            opacity: 0.4;
+            margin-left: 6px;
+        }
+
+        .settings-btn,
+        .font-size-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 15px;
+            color: var(--light-text);
+            transition: all 0.3s ease;
+            padding: 4px 6px;
+            border-radius: 4px;
+        }
+        .settings-btn:hover,
+        .font-size-btn:hover {
+            color: var(--neon-blue);
+            text-shadow: 0 0 8px rgba(0, 195, 255, 0.3);
+            background: rgba(0, 195, 255, 0.06);
+        }
+        .font-size-controls {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .font-size-btn i {
+            font-size: 13px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 6px;
+        }
+        .clear-btn,
+        .export-btn {
+            background: none;
+            border: none;
+            color: var(--light-text);
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .clear-btn::after,
+        .export-btn::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, var(--neon-blue) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: -1;
+        }
+        .clear-btn:hover,
+        .export-btn:hover {
+            color: var(--neon-blue);
+            transform: scale(1.08);
+        }
+        .clear-btn:hover::after,
+        .export-btn:hover::after {
+            opacity: 0.12;
+        }
+
+        /* ── chat area ── */
+        .chat-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 16px;
+            background-color: var(--bg-color);
+            background-image: linear-gradient(0deg, rgba(0, 153, 255, 0.015), transparent), var(--digital-pattern);
+        }
+
+        .message-time {
+            text-align: center;
+            margin: 10px 0;
+            color: var(--light-text);
+            font-size: 12px;
+            padding: 2px 14px;
+            display: inline-block;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 153, 255, 0.08);
+            box-shadow: 0 0 10px rgba(0, 153, 255, 0.03);
+            backdrop-filter: blur(4px);
+        }
+
+        .message {
+            margin-bottom: 14px;
+            display: flex;
+            align-items: flex-start;
+        }
+        .message-user {
+            flex-direction: row-reverse;
+        }
+
+        .message-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 6px;
+            margin: 0 10px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3), 0 0 6px rgba(0, 153, 255, 0.1);
+            position: relative;
+            z-index: 1;
+            flex-shrink: 0;
+        }
+        .message-avatar::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(0, 195, 255, 0.15), transparent);
+            z-index: -1;
+        }
+        .message-avatar img,
+        .message-avatar svg {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .message-bubble {
+            max-width: 72%;
+            padding: 10px 16px;
+            border-radius: 12px;
+            position: relative;
+            font-size: var(--chat-font-size);
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2), 0 0 6px rgba(0, 153, 255, 0.03);
+            background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.02), transparent);
+            backdrop-filter: blur(4px);
+            word-break: break-word;
+        }
+        .message-user .message-bubble {
+            background-color: var(--user-msg-color);
+            border-top-right-radius: 0;
+            border: 1px solid rgba(0, 153, 255, 0.15);
+        }
+        .message-ai .message-bubble {
+            background-color: var(--ai-msg-color);
+            border-top-left-radius: 0;
+            border: 1px solid rgba(0, 153, 255, 0.08);
+        }
+        .message-ai .message-bubble::before {
+            content: '';
+            position: absolute;
+            top: -2px;
+            left: -2px;
+            width: calc(100% + 4px);
+            height: calc(100% + 4px);
+            background: linear-gradient(45deg, var(--neon-blue), transparent, var(--neon-cyan));
+            border-radius: inherit;
+            z-index: -1;
+            opacity: 0.15;
+            animation: borderflow 4s infinite alternate;
+            filter: blur(6px);
+        }
+        @keyframes borderflow {
+            0% {
+                background-position: 0% 50%;
+            }
+            100% {
+                background-position: 100% 50%;
+            }
+        }
+
+        .message-text {
+            word-wrap: break-word;
+            white-space: pre-wrap;
+            line-height: 1.6;
+        }
+        .message-text code {
+            font-family: 'Courier New', monospace;
+            background-color: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border-left: 2px solid var(--neon-blue);
+            font-size: 0.9em;
+            color: #b0d4ff;
+        }
+        .message-text pre {
+            background-color: rgba(0, 0, 0, 0.35);
+            padding: 12px 14px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+            border-left: 3px solid var(--neon-blue);
+            box-shadow: inset 0 0 16px rgba(0, 153, 255, 0.04);
+            background-image: linear-gradient(to bottom, rgba(0, 153, 255, 0.03), transparent);
+            color: #c8d8e8;
+        }
+        .message-text .image-attachment {
+            display: inline-block;
+            margin: 4px 4px 0 0;
+            border-radius: 6px;
+            overflow: hidden;
+            max-width: 150px;
+            max-height: 150px;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        .message-text .image-attachment img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .code-preview-btn {
+            display: inline-block;
+            margin-top: 6px;
+            padding: 4px 14px;
+            background-color: var(--tech-grey);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            color: var(--text-color);
+        }
+        .code-preview-btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0, 153, 255, 0.12), transparent);
+            transition: 0.5s;
+        }
+        .code-preview-btn:hover {
+            background-color: var(--tech-light-blue);
+            border-color: var(--neon-blue);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 153, 255, 0.12);
+            color: #fff;
+        }
+        .code-preview-btn:hover::after {
+            left: 100%;
+        }
+        .code-preview {
+            display: none;
+            margin-top: 10px;
+            padding: 10px;
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            overflow: auto;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 0 12px rgba(0, 153, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+        .code-preview iframe {
+            width: 100%;
+            min-height: 200px;
+            border: none;
+            background-color: #fff;
+            border-radius: 4px;
+        }
+        .code-preview.show {
+            display: block;
+            animation: slide-down 0.3s ease;
+        }
+        @keyframes slide-down {
+            from {
+                opacity: 0;
+                transform: translateY(-6px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message-actions {
+            margin-top: 6px;
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            flex-wrap: wrap;
+        }
+        .message-copy,
+        .message-model {
+            font-size: 11px;
+            color: var(--light-text);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            opacity: 0.7;
+        }
+        .message-copy:hover {
+            color: var(--neon-blue);
+            text-shadow: 0 0 6px rgba(0, 195, 255, 0.3);
+            opacity: 1;
+        }
+        .message-model {
+            font-style: italic;
+            opacity: 0.5;
+            cursor: default;
+        }
+        .message-model:hover {
+            opacity: 0.8;
+        }
+
+        /* ── typing indicator ── */
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--light-text);
+            padding: 6px 0;
+        }
+        .typing-indicator .dots {
+            display: flex;
+            gap: 4px;
+        }
+        .typing-indicator .dot {
+            width: 8px;
+            height: 8px;
+            background-color: var(--neon-blue);
+            border-radius: 50%;
+            animation: typing-dot 1.4s infinite ease-in-out;
+            box-shadow: 0 0 8px rgba(0, 195, 255, 0.3);
+        }
+        .typing-indicator .dot:nth-child(1) {
+            animation-delay: 0s;
+        }
+        .typing-indicator .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes typing-dot {
+            0%,
+            60%,
+            100% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+            30% {
+                transform: translateY(-5px);
+                opacity: 1;
+            }
+        }
+
+        /* ── input area ── */
+        .input-area {
+            padding: 12px 16px;
+            background-color: var(--white);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            position: relative;
+            background-image: linear-gradient(to top, rgba(0, 153, 255, 0.02), transparent);
+        }
+        .input-area::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 15%;
+            right: 15%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+            opacity: 0.3;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .message-input {
+            flex: 1;
+            padding: 10px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            resize: none;
+            height: 48px;
+            max-height: 180px;
+            overflow-y: auto;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+            box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.2);
+            background-image: linear-gradient(to bottom, rgba(0, 153, 255, 0.01), transparent);
+            font-size: 14px;
+            line-height: 1.5;
+        }
+        .message-input:focus {
+            outline: none;
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 0 2px rgba(0, 195, 255, 0.08), inset 0 0 12px rgba(0, 153, 255, 0.02);
+        }
+        .message-input::placeholder {
+            color: var(--light-text);
+            opacity: 0.5;
+        }
+
+        .input-buttons {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        .upload-btn {
+            background-color: var(--secondary-color);
+            color: var(--light-text);
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            width: 48px;
+            height: 48px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .upload-btn:hover {
+            border-color: var(--neon-blue);
+            color: var(--neon-blue);
+            box-shadow: 0 0 12px rgba(0, 195, 255, 0.08);
+        }
+        .upload-btn input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+            font-size: 0;
+        }
+
+        .send-btn {
+            background-color: var(--tech-blue);
+            color: #fff;
+            border: none;
+            border-radius: var(--border-radius);
+            width: 48px;
+            height: 48px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 14px rgba(0, 153, 255, 0.12);
+            flex-shrink: 0;
+        }
+        .send-btn::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, var(--neon-blue), var(--tech-blue));
+            z-index: -1;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .send-btn::after {
+            content: '';
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+            top: -20px;
+            left: -20px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .send-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 153, 255, 0.25);
+        }
+        .send-btn:hover::before {
+            opacity: 1;
+        }
+        .send-btn:hover::after {
+            opacity: 0.4;
+        }
+        .send-btn:active {
+            transform: translateY(0);
+        }
+        .send-btn i {
+            position: relative;
+            z-index: 1;
+            font-size: 16px;
+        }
+        .send-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* ── image previews ── */
+        .image-previews {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            padding: 4px 0;
+        }
+        .image-previews .preview-item {
+            position: relative;
+            width: 64px;
+            height: 64px;
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+            flex-shrink: 0;
+            background: var(--bg-color);
+        }
+        .image-previews .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .image-previews .preview-item .remove-img {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            border: none;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 10px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+        .image-previews .preview-item .remove-img:hover {
+            background: #ff5252;
+            transform: scale(1.1);
+        }
+        .image-previews .preview-item .upload-status {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(0, 0, 0, 0.5);
+            color: var(--neon-blue);
+            font-size: 11px;
+        }
+
+        /* ── modal ── */
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(6px);
+            padding: 20px;
+        }
+        .modal.show {
+            display: flex;
+            animation: modal-in 0.25s ease;
+        }
+        @keyframes modal-in {
+            from {
+                opacity: 0;
+                transform: scale(0.96);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-content {
+            background-color: var(--white);
+            border-radius: var(--border-radius);
+            padding: 24px 28px;
+            width: 560px;
+            max-width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow), 0 0 40px rgba(0, 153, 255, 0.06);
+            border: 1px solid rgba(0, 153, 255, 0.12);
+            position: relative;
+        }
+        .modal-content::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--neon-blue), var(--neon-cyan), var(--neon-blue));
+            z-index: 1;
+        }
+        .modal-content::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at top right, rgba(0, 195, 255, 0.04), transparent 70%);
+            pointer-events: none;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 18px;
+            position: relative;
+        }
+        .modal-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: var(--neon-blue);
+            text-shadow: 0 0 8px rgba(0, 195, 255, 0.15);
+        }
+        .close-modal {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            color: var(--light-text);
+            transition: all 0.3s ease;
+            z-index: 2;
+            padding: 4px 6px;
+            border-radius: 4px;
+        }
+        .close-modal:hover {
+            color: var(--neon-blue);
+            text-shadow: 0 0 8px rgba(0, 195, 255, 0.3);
+            transform: rotate(90deg);
+            background: rgba(0, 195, 255, 0.06);
+        }
+
+        .modal-body {
+            margin-bottom: 16px;
+            position: relative;
+            z-index: 2;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--neon-blue);
+            position: relative;
+            display: inline-block;
+            font-size: 14px;
+        }
+        .form-label::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 1px;
+            background: linear-gradient(90deg, var(--neon-blue), transparent);
+            opacity: 0.4;
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: var(--border-radius);
+            resize: vertical;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: all 0.3s ease;
+            background-image: linear-gradient(to bottom, rgba(0, 153, 255, 0.01), transparent);
+            font-size: 13px;
+        }
+        .form-control:focus {
+            border-color: var(--neon-blue);
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(0, 195, 255, 0.06), inset 0 0 12px rgba(0, 153, 255, 0.02);
+        }
+        .form-control::placeholder {
+            color: var(--light-text);
+            opacity: 0.4;
+        }
+
+        .prompt-examples {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .prompt-example {
+            font-size: 11px;
+            padding: 4px 12px;
+            background-color: var(--tech-grey);
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            color: var(--light-text);
+        }
+        .prompt-example::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, transparent, rgba(0, 195, 255, 0.06), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.5s ease;
+        }
+        .prompt-example:hover {
+            background-color: var(--tech-light-blue);
+            border-color: var(--neon-blue);
+            box-shadow: 0 0 8px rgba(0, 195, 255, 0.1);
+            transform: translateY(-1px);
+            color: #fff;
+        }
+        .prompt-example:hover::before {
+            transform: translateX(100%);
+        }
+
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            position: relative;
+            z-index: 2;
+            padding-top: 6px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 8px 18px;
+            border-radius: var(--border-radius);
+            cursor: pointer;
+            border: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            font-size: 13px;
+        }
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.06) 0%, transparent 60%);
+            opacity: 0;
+            transform: scale(0.1);
+            transition: transform 0.5s, opacity 0.5s;
+        }
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        .btn:hover::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+        .btn-secondary {
+            background-color: var(--secondary-color);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+        }
+        .btn-secondary:hover {
+            background-color: var(--tech-grey);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        }
+        .btn-primary {
+            background-color: var(--tech-blue);
+            color: #fff;
+            box-shadow: 0 0 14px rgba(0, 153, 255, 0.12);
+        }
+        .btn-primary:hover {
+            background-color: var(--tech-dark-blue);
+            box-shadow: 0 0 20px rgba(0, 153, 255, 0.2);
+        }
+        .btn-refresh {
+            background-color: var(--tech-grey);
+            color: var(--text-color);
+            border: 1px solid var(--border-color);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-refresh:hover {
+            background-color: var(--tech-light-blue);
+            border-color: var(--neon-blue);
+            color: #fff;
+        }
+        .btn-refresh .fa-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .api-key-input {
+            font-family: 'Courier New', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        .about-section {
+            margin-top: 8px;
+        }
+        .about-section h5 {
+            color: var(--neon-blue);
+            margin-bottom: 10px;
+            font-size: 15px;
+        }
+        .about-section p {
+            font-size: 13px;
+            color: var(--light-text);
+            line-height: 1.7;
+        }
+        .about-section a {
+            color: var(--tech-blue);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .about-section a:hover {
+            color: var(--neon-blue);
+            text-decoration: underline;
+        }
+        hr {
+            margin: 16px 0;
+            border: none;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .no-results {
+            padding: 20px 16px;
+            text-align: center;
+            color: var(--light-text);
+            font-size: 14px;
+            opacity: 0.6;
+        }
+
+        /* ── tech grid & particles ── */
+        .tech-grid {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(0, 153, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 153, 255, 0.02) 1px, transparent 1px);
+            background-size: 24px 24px;
+            pointer-events: none;
+            z-index: -1;
+        }
+        .particles {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: -1;
+        }
+        .particle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            background: var(--neon-blue);
+            border-radius: 50%;
+            opacity: 0.2;
+            animation: float 22s infinite linear;
+        }
+        @keyframes float {
+            0% {
+                transform: translateY(0) rotate(0deg);
+                opacity: 0;
+            }
+            10% {
+                opacity: 0.2;
+            }
+            90% {
+                opacity: 0.2;
+            }
+            100% {
+                transform: translateY(-100vh) rotate(720deg);
+                opacity: 0;
+            }
+        }
+
+        /* ── responsive ── */
+        @media (max-width: 768px) {
+            .sidebar {
+                width: 100%;
+                z-index: 100;
+            }
+            body:not(.sidebar-hidden) .main-content {
+                margin-left: 0;
+            }
+            .font-size-controls {
+                display: none;
+            }
+            .action-buttons {
+                position: absolute;
+                right: 12px;
+            }
+            .model-selection {
+                justify-content: flex-start;
+                gap: 8px;
+            }
+            .message-bubble {
+                max-width: 80%;
+            }
+            .dropdown-toggle {
+                max-width: 140px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                font-size: 12px;
+                padding: 6px 10px;
+            }
+            .modal-content {
+                padding: 18px 16px;
+            }
+            .header {
+                padding: 10px 12px;
+            }
+            .chat-area {
+                padding: 10px 12px;
+            }
+            .input-area {
+                padding: 10px 12px;
+            }
+            .sidebar-title {
+                font-size: 16px;
+            }
+            .prompt-examples {
+                gap: 4px;
+            }
+            .prompt-example {
+                font-size: 10px;
+                padding: 3px 10px;
+            }
+            .dropdown-menu {
+                min-width: 200px;
+            }
+            .upload-btn {
+                width: 40px;
+                height: 40px;
+            }
+            .send-btn {
+                width: 40px;
+                height: 40px;
+            }
+            .message-input {
+                height: 40px;
+                font-size: 13px;
+                padding: 8px 12px;
+            }
+            .image-previews .preview-item {
+                width: 48px;
+                height: 48px;
+            }
+        }
+
+        /* ── error toast ── */
+        .error-toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--white);
+            border: 1px solid #ff5252;
+            border-radius: var(--border-radius);
+            padding: 14px 20px;
+            max-width: 90%;
+            width: 500px;
+            box-shadow: 0 4px 30px rgba(255, 0, 0, 0.15);
+            z-index: 2000;
+            display: none;
+            animation: slide-up 0.3s ease;
+            backdrop-filter: blur(12px);
+        }
+        .error-toast.show {
+            display: block;
+        }
+        @keyframes slide-up {
+            from {
+                opacity: 0;
+                transform: translateX(-50%) translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(-50%) translateY(0);
+            }
+        }
+        .error-toast .error-title {
+            font-weight: bold;
+            color: #ff5252;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+        .error-toast .error-detail {
+            font-size: 13px;
+            color: var(--light-text);
+            line-height: 1.5;
+        }
+        .error-toast .error-detail code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .error-toast .error-suggestion {
+            margin-top: 6px;
+            font-size: 12px;
+            color: var(--neon-cyan);
+            border-top: 1px solid var(--border-color);
+            padding-top: 6px;
+        }
+        .error-toast .error-close {
+            position: absolute;
+            top: 6px;
+            right: 10px;
+            background: none;
+            border: none;
+            color: var(--light-text);
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .error-toast .error-close:hover {
+            color: #fff;
+        }
+
+        .refresh-status {
+            font-size: 12px;
+            color: var(--light-text);
+            margin-top: 4px;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        .refresh-status.success {
+            color: var(--matrix-green);
+            opacity: 1;
+        }
+        .refresh-status.error {
+            color: #ff5252;
+            opacity: 1;
+        }
+        .refresh-status.loading {
+            color: var(--neon-cyan);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="sidebar-hidden">
+
+    <!-- ===== SIDEBAR ===== -->
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-title">
+                <a href="./index.html"><span class="brand">Polli<span>Gen</span></span></a>
+                <br /><small>based on Pollinations.AI</small>
+            </div>
+            <div class="sidebar-header-actions">
+                <button class="clear-all-btn" id="clearAllBtn" title="Delete all sessions">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+
+        <div class="search-container">
+            <input type="text" class="search-input" id="searchInput" placeholder="Search Sessions…" />
+            <i class="fas fa-search search-icon"></i>
+        </div>
+
+        <button class="new-chat-btn" id="newChatBtn">
+            <i class="fas fa-plus"></i>
+            <span>New Session</span>
+        </button>
+
+        <a href="./index.html" class="sci-fi-btn">
+            <i class="fas fa-circle-arrow-left"></i>&nbsp; Back to Home
+        </a>
+
+        <div class="chat-list" id="chatList">
+            <!-- chat items rendered by JS -->
+        </div>
+    </div>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div class="main-content">
+        <!-- HEADER -->
+        <div class="header">
+            <div class="model-selection">
+                <button class="sidebar-toggle-btn" id="sidebarToggleBtn">
+                    <i class="fas fa-bars"></i>
+                </button>
+
+                <div class="dropdown" id="modelDropdown">
+                    <button class="dropdown-toggle" id="modelDropdownToggle">
+                        <span id="selectedModel">Loading models…</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="dropdown-menu" id="modelMenu">
+                        <!-- populated by JS -->
+                    </div>
+                </div>
+
+                <a href="./index.html" class="home-btn" title="Home">
+                    <i class="fas fa-home"></i>
+                </a>
+
+                <button class="settings-btn" id="settingsBtn" title="Settings">
+                    <i class="fas fa-cog"></i>
+                </button>
+
+                <div class="font-size-controls">
+                    <button class="font-size-btn" id="fontSizeDecreaseBtn" title="Decrease font size">
+                        <i class="fas fa-font"></i><i class="fas fa-minus" style="font-size:10px;"></i>
+                    </button>
+                    <button class="font-size-btn" id="fontSizeIncreaseBtn" title="Increase font size">
+                        <i class="fas fa-font"></i><i class="fas fa-plus" style="font-size:10px;"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="action-buttons">
+                <button class="clear-btn" id="clearChatBtn" title="Clear conversation">
+                    <i class="fas fa-broom"></i>
+                </button>
+                <button class="export-btn" id="exportChatBtn" title="Export conversation">
+                    <i class="fas fa-download"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- CHAT AREA -->
+        <div class="chat-area" id="chatArea">
+            <!-- messages rendered by JS -->
+        </div>
+
+        <!-- INPUT AREA -->
+        <div class="input-area">
+            <!-- Image previews -->
+            <div class="image-previews" id="imagePreviews"></div>
+
+            <div class="input-row">
+                <textarea class="message-input" id="messageInput" placeholder="Type a message…" rows="1"></textarea>
+                <div class="input-buttons">
+                    <button class="upload-btn" id="uploadBtn" title="Upload images">
+                        <i class="fas fa-image"></i>
+                        <input type="file" id="fileInput" multiple accept="image/*" />
+                    </button>
+                    <button class="send-btn" id="sendBtn">
+                        <i class="fas fa-paper-plane"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ERROR TOAST ===== -->
+    <div class="error-toast" id="errorToast">
+        <button class="error-close" id="errorCloseBtn"><i class="fas fa-times"></i></button>
+        <div class="error-title"><i class="fas fa-exclamation-circle"></i> <span id="errorTitle">Error</span></div>
+        <div class="error-detail" id="errorDetail"></div>
+        <div class="error-suggestion" id="errorSuggestion"></div>
+    </div>
+
+    <!-- ===== TECH OVERLAY ===== -->
+    <div class="tech-grid"></div>
+    <div class="particles" id="particles"></div>
+
+    <!-- ===== SETTINGS MODAL ===== -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-sliders-h" style="margin-right:8px;"></i>Settings</h5>
+                <button class="close-modal" id="closeSettingsModal">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+
+                <!-- API Key -->
+                <div class="form-group">
+                    <label class="form-label" for="apiKeyInput">
+                        <i class="fas fa-key" style="margin-right:6px;"></i>API Key
+                    </label>
+                    <input type="password" class="form-control api-key-input" id="apiKeyInput"
+                    placeholder="Enter your Pollinations API key (optional)" />
+                    <div style="font-size:11px;color:var(--light-text);margin-top:4px;opacity:0.6;">
+                        Leave blank to use the default public key. Required for image uploads.
+                    </div>
+                </div>
+
+                <hr />
+
+                <!-- System Prompt -->
+                <div class="form-group">
+                    <label class="form-label" for="systemPrompt">
+                        <i class="fas fa-terminal" style="margin-right:6px;"></i>System Prompt
+                    </label>
+                    <textarea class="form-control" id="systemPrompt" rows="4"
+                    placeholder="Set a system prompt to guide the AI…"></textarea>
+                    <div class="prompt-examples">
+                        <div class="prompt-example" data-prompt="You are a helpful assistant that provides accurate and concise information.">General Assistant</div>
+                        <div class="prompt-example" data-prompt="You are a creative writer who helps craft engaging stories and content.">Creative Writer</div>
+                        <div class="prompt-example" data-prompt="You are a programming expert who provides clear code examples and explanations.">Code Assistant</div>
+                        <div class="prompt-example" data-prompt="You are a language learning tutor who helps with translations and grammar.">Language Tutor</div>
+                        <div class="prompt-example" data-prompt="You are a data analyst who helps interpret and visualize information.">Data Analyst</div>
+                        <div class="prompt-example" data-prompt="I want you to act as a debater. I will provide you with some topics related to current events and your task is to research both sides…">Debater</div>
+                        <div class="prompt-example" data-prompt="I want you to act as a poet. You will create poems that evoke emotions…">Poet</div>
+                        <div class="prompt-example" data-prompt="I want you to act as a philosopher. I will provide some topics or questions related to the study of philosophy…">Philosopher</div>
+                        <div class="prompt-example" data-prompt="I want you to act as a mental health adviser. I will provide you with an individual looking for guidance…">Mental Health</div>
+                        <div class="prompt-example" data-prompt="Please respond to me as a product manager. I will ask for a subject, and you will help me write a PRD…">Product Manager</div>
+                        <div class="prompt-example" data-prompt="You are an expert in text outline generation. You are good at creating an outline that is organized and easy to expand…">Outline Generator</div>
+                        <div class="prompt-example" data-prompt="You are an expert in generating prompts for a big model. Please write a prompt for an intelligent assistant based on user needs…">Prompt Generator</div>
+                        <div class="prompt-example" data-prompt="You are a Chinese-English translation expert, translating Chinese input into English or English input into Chinese…">Translator</div>
+                    </div>
+                </div>
+
+                <hr />
+
+                <div class="form-group">
+                    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;">
+                        <label class="form-label" style="margin-bottom:0;">
+                            <i class="fas fa-database" style="margin-right:6px;"></i>Model List
+                        </label>
+                        <button class="btn btn-refresh" id="refreshModelsBtn">
+                            <i class="fas fa-sync-alt" id="refreshIcon"></i>
+                            <span id="refreshBtnText">Refresh Models</span>
+                        </button>
+                    </div>
+                    <div class="refresh-status" id="refreshStatus">Last updated: from local cache</div>
+                    <div style="font-size:11px;color:var(--light-text);margin-top:4px;opacity:0.6;">
+                        Fetches the latest text models, pricing, capabilities, and paid-only status from
+                        <code style="background:rgba(0,0,0,0.3);padding:1px 6px;border-radius:3px;">gen.pollinations.ai/text/models</code>
+                    </div>
+                </div>
+
+                <hr />
+
+                <div class="about-section">
+                    <h5><i class="fas fa-info-circle" style="margin-right:6px;"></i>About</h5>
+                    <p>
+                        <i class="fas fa-robot" style="color:var(--neon-blue);"></i>
+                        Powered by <a href="https://pollinations.ai" target="_blank">Pollinations.AI</a>
+                        &nbsp;·&nbsp;
+                        <i class="fab fa-github" style="color:var(--neon-blue);"></i>
+                        <a href="https://github.com/xtciaan/FreeAI" target="_blank">GitHub</a>
+                        &nbsp;·&nbsp;
+                        <i class="fas fa-heart" style="color:#ff6b6b;"></i>
+                        <a href="https://xtconline.co.za" target="_blank">Support</a>
+                    </p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="cancelSettingsBtn">Cancel</button>
+                <button class="btn btn-primary" id="saveSettingsBtn">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- ===== JAVASCRIPT ===== -->
+    <!-- ============================================================ -->
+    <script>
+        // ================================================================
+        //  1.  MODEL DATA  (hardcoded fallback – will be replaced on refresh)
+        // ================================================================
+        let allModels = [{
+                "name": "openai",
+                "aliases": ["gpt-5.4-nano"],
+                "category": "text",
+                "brand": "OpenAI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000015", "promptCachedTokens": "0.000000015",
+                    "completionTextTokens": "0.0000009375" },
+                "title": "GPT-5.4 Nano",
+                "description": "Fast & Balanced",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 400000,
+                "is_specialized": false,
+                "added_date": 1759795200000
+            }, {
+                "name": "openai-fast",
+                "aliases": ["gpt-5-nano", "gpt-5-nano-2025-08-07"],
+                "category": "text",
+                "brand": "OpenAI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000000375", "promptCachedTokens": "0.00000000375",
+                    "completionTextTokens": "0.0000003" },
+                "title": "GPT-5 Nano",
+                "description": "Ultra Fast & Affordable",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 400000,
+                "is_specialized": false,
+                "added_date": 1759795200000
+            }, {
+                "name": "openai-large",
+                "aliases": ["gpt-5.4", "gpt-5.4-reasoning", "gpt-5.2", "openai-reasoning", "gpt-5.2-reasoning"],
+                "category": "text",
+                "brand": "OpenAI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000025", "promptCachedTokens": "0.00000025",
+                    "completionTextTokens": "0.000015" },
+                "title": "GPT-5.4",
+                "description": "Most Powerful & Intelligent",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 1050000,
+                "is_specialized": false,
+                "added_date": 1759795200000
+            }, {
+                "name": "gpt-5.4-mini",
+                "aliases": ["gpt-5-mini", "openai-mini"],
+                "category": "text",
+                "brand": "OpenAI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000005625", "promptCachedTokens": "0.00000005625",
+                    "completionTextTokens": "0.000003375" },
+                "title": "GPT-5.4 Mini",
+                "description": "Balanced Speed & Cost",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 400000,
+                "is_specialized": false,
+                "added_date": 1778803200000
+            }, {
+                "name": "gpt-5.5",
+                "aliases": ["gpt-5.5-reasoning"],
+                "category": "text",
+                "brand": "OpenAI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000005", "promptCachedTokens": "0.0000005",
+                    "completionTextTokens": "0.00003" },
+                "title": "GPT-5.5",
+                "description": "Frontier Reasoning",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 1050000,
+                "is_specialized": false,
+                "added_date": 1777680000000
+            }, {
+                "name": "qwen-coder",
+                "aliases": ["qwen3-coder", "qwen3-coder-30b-a3b-instruct"],
+                "category": "text",
+                "brand": "Qwen",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000006",
+                    "completionTextTokens": "0.00000022" },
+                "title": "Qwen3 Coder 30B",
+                "description": "Specialized for Code Generation",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 262144,
+                "is_specialized": false,
+                "added_date": 1759795200000
+            }, {
+                "name": "mistral",
+                "aliases": ["mistral-small", "mistral-small-3.1", "mistral-small-2503", "mistral-small-3.2",
+                    "mistral-small-3.2-24b-instruct-2506"
+                ],
+                "category": "text",
+                "brand": "Mistral",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000000075", "promptCachedTokens": "0.000000075",
+                    "completionTextTokens": "0.0000002" },
+                "title": "Mistral Small 3.2",
+                "description": "Improved Instruction Following & Function Calling",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 128000,
+                "is_specialized": false,
+                "added_date": 1759795200000
+            }, {
+                "name": "mistral-4",
+                "aliases": ["mistral-small-4", "mistral-small-2603"],
+                "category": "text",
+                "brand": "Mistral",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000015", "promptCachedTokens": "0.00000015",
+                    "completionTextTokens": "0.0000006" },
+                "title": "Mistral Small 4",
+                "description": "Unified Reasoning & Multimodal",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 262144,
+                "is_specialized": false,
+                "added_date": 1778803200000
+            }, {
+                "name": "openai-audio",
+                "aliases": ["gpt-audio-mini", "gpt-audio-mini-2025-12-15", "gpt-4o-mini-audio-preview",
+                    "gpt-4o-mini-audio-preview-2024-12-17"
+                ],
+                "category": "text",
+                "brand": "OpenAI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000006", "completionTextTokens": "0.0000024",
+                    "promptAudioTokens": "0.00001", "completionAudioTokens": "0.00002" },
+                "title": "GPT Audio Mini",
+                "description": "Voice Input & Output",
+                "input_modalities": ["text", "audio"],
+                "output_modalities": ["audio", "text"],
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 128000,
+                "voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer", "coral", "verse", "ballad", "ash", "sage",
+                    "amuch", "dan"
+                ],
+                "is_specialized": false,
+                "added_date": 1759795200000
+            }, {
+                "name": "openai-audio-large",
+                "aliases": ["gpt-audio", "gpt-audio-1.5", "gpt-audio-2025-12-15"],
+                "category": "text",
+                "brand": "OpenAI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000025", "completionTextTokens": "0.00001",
+                    "promptAudioTokens": "0.00004", "completionAudioTokens": "0.00008" },
+                "title": "GPT Audio 1.5",
+                "description": "Premium Voice Input & Output",
+                "input_modalities": ["text", "audio"],
+                "output_modalities": ["audio", "text"],
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 128000,
+                "voices": ["alloy", "echo", "fable", "onyx", "nova", "shimmer", "coral", "verse", "ballad", "ash", "sage",
+                    "amuch", "dan"
+                ],
+                "is_specialized": false,
+                "added_date": 1775088000000
+            }, {
+                "name": "gemini",
+                "aliases": ["gemini-3-flash", "gemini-3-flash-preview"],
+                "category": "text",
+                "brand": "Google",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000005", "promptCachedTokens": "0.00000005",
+                    "promptAudioTokens": "0.000001", "completionTextTokens": "0.000003" },
+                "title": "Gemini 3 Flash",
+                "description": "Pro-Grade Reasoning at Flash Speed",
+                "input_modalities": ["text", "image", "audio", "video"],
+                "output_modalities": ["text"],
+                "max_reference_images": 3600,
+                "max_reference_videos": 10,
+                "capabilities": ["tool_calling", "web_search", "code_execution"],
+                "tools": true,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1759795200000
+            }, {
+                "name": "gemini-3.5-flash",
+                "aliases": ["gemini-3.5-flash"],
+                "category": "text",
+                "brand": "Google",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000015", "promptCachedTokens": "0.00000015",
+                    "promptAudioTokens": "0.0000015", "completionTextTokens": "0.000009" },
+                "title": "Gemini 3.5 Flash",
+                "description": "Next-Gen Reasoning at Flash Speed",
+                "input_modalities": ["text", "image", "audio", "video"],
+                "output_modalities": ["text"],
+                "max_reference_images": 3600,
+                "max_reference_videos": 10,
+                "capabilities": ["tool_calling", "web_search", "code_execution"],
+                "tools": true,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1779148800000
+            }, {
+                "name": "gemini-flash-lite-3.1",
+                "aliases": ["gemini-3.1-flash-lite", "gemini-3.1-flash-lite-preview", "gemini-flash-lite"],
+                "category": "text",
+                "brand": "Google",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000025", "promptCachedTokens": "0.000000025",
+                    "promptAudioTokens": "0.0000005", "completionTextTokens": "0.0000015" },
+                "title": "Gemini 3.1 Flash Lite",
+                "description": "Fast & Cost-Effective",
+                "input_modalities": ["text", "image", "audio", "video"],
+                "output_modalities": ["text"],
+                "max_reference_images": 3600,
+                "max_reference_videos": 10,
+                "capabilities": ["tool_calling", "web_search", "code_execution"],
+                "tools": true,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1775174400000
+            }, {
+                "name": "gemini-fast",
+                "aliases": ["gemini-2.5-flash-lite"],
+                "category": "text",
+                "brand": "Google",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000001", "promptCachedTokens": "0.00000001",
+                    "promptAudioTokens": "0.0000003", "completionTextTokens": "0.0000004" },
+                "title": "Gemini 2.5 Flash Lite",
+                "description": "Ultra Fast & Cost-Effective",
+                "input_modalities": ["text", "image", "video"],
+                "output_modalities": ["text"],
+                "max_reference_images": 3600,
+                "max_reference_videos": 10,
+                "capabilities": ["tool_calling", "web_search", "code_execution"],
+                "tools": true,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1766016000000
+            }, {
+                "name": "deepseek",
+                "aliases": ["deepseek-v4", "deepseek-v4-flash", "deepseek-v4-lite", "deepseek-lite", "deepseek-flash"],
+                "category": "text",
+                "brand": "DeepSeek",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000014", "promptCachedTokens": "0.000000014",
+                    "completionTextTokens": "0.00000028" },
+                "title": "DeepSeek V4 Flash (Lite)",
+                "description": "Fast Reasoning & Coding",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "added_date": 1760054400000
+            }, {
+                "name": "gemma",
+                "aliases": ["gemma-4", "gemma-4-26b", "gemma-4-26b-a4b", "gemma-4-26b-a4b-it"],
+                "category": "text",
+                "brand": "Google",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000006",
+                    "completionTextTokens": "0.00000033" },
+                "title": "Gemma 4 26B A4B",
+                "description": "Open-source multimodal MoE for fast inference",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 262144,
+                "is_specialized": false,
+                "added_date": 1778198400000
+            }, {
+                "name": "deepseek-pro",
+                "aliases": ["deepseek-v4-pro"],
+                "category": "text",
+                "brand": "DeepSeek",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000174", "promptCachedTokens": "0.00000014",
+                    "completionTextTokens": "0.00000348" },
+                "title": "DeepSeek V4 Pro",
+                "description": "Advanced Reasoning & Coding",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "added_date": 1776988800000
+            }, {
+                "name": "grok",
+                "aliases": ["grok-fast", "grok-4-1-fast", "grok-4-1-fast-non-reasoning", "grok-legacy", "grok-4",
+                    "grok-4-fast", "grok-4-20-non-reasoning", "grok-non-reasoning"
+                ],
+                "category": "text",
+                "brand": "xAI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000002", "promptCachedTokens": "0.0000002",
+                    "promptImageTokens": "0.000002", "completionTextTokens": "0.000006" },
+                "title": "Grok 4.20 Non-Reasoning",
+                "description": "Fast multimodal tool-calling",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 100,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 262144,
+                "is_specialized": false,
+                "added_date": 1762732800000
+            }, {
+                "name": "grok-large",
+                "aliases": ["grok-4-20", "grok-4-20-reasoning", "grok-reasoning", "grok-4-1-fast-reasoning"],
+                "category": "text",
+                "brand": "xAI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000002", "promptCachedTokens": "0.0000002",
+                    "promptImageTokens": "0.000002", "completionTextTokens": "0.000006" },
+                "title": "Grok 4.20 Reasoning",
+                "description": "Multimodal reasoning and agentic tasks",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 100,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 262144,
+                "is_specialized": false,
+                "added_date": 1775692800000
+            }, {
+                "name": "grok-4.3",
+                "aliases": ["grok-4-3"],
+                "category": "text",
+                "brand": "xAI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000125", "promptCachedTokens": "0.0000002",
+                    "promptImageTokens": "0.00000125", "completionTextTokens": "0.0000025" },
+                "title": "Grok 4.3",
+                "description": "Newer & cheaper multimodal reasoning",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 100,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "added_date": 1779753600000
+            }, {
+                "name": "gemini-search",
+                "aliases": ["gemini-2.5-flash-search", "gemini-2.5-flash-lite-search"],
+                "category": "text",
+                "brand": "Google",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000001", "promptCachedTokens": "0.00000001",
+                    "promptAudioTokens": "0.0000003", "completionTextTokens": "0.0000004" },
+                "title": "Google Gemini 2.5 Flash Lite Search",
+                "description": "Web-grounded answers via Google Search",
+                "input_modalities": ["text", "image", "video"],
+                "output_modalities": ["text"],
+                "max_reference_images": 3600,
+                "max_reference_videos": 10,
+                "capabilities": ["web_search", "code_execution"],
+                "tools": false,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1760054400000
+            }, {
+                "name": "gemini-search-fast",
+                "aliases": ["gemini-3.1-flash-lite-search"],
+                "category": "text",
+                "brand": "Google",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000025", "promptCachedTokens": "0.000000025",
+                    "promptAudioTokens": "0.0000005", "completionTextTokens": "0.0000015" },
+                "title": "Gemini 3.1 Flash Lite Search",
+                "description": "Cheap grounded web answers",
+                "input_modalities": ["text", "image", "audio", "video"],
+                "output_modalities": ["text"],
+                "max_reference_images": 3600,
+                "max_reference_videos": 10,
+                "capabilities": ["web_search", "code_execution"],
+                "tools": false,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1779753600000
+            }, {
+                "name": "gemini-search-large",
+                "aliases": ["gemini-3.5-flash-search"],
+                "category": "text",
+                "brand": "Google",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000015", "promptCachedTokens": "0.00000015",
+                    "promptAudioTokens": "0.0000015", "completionTextTokens": "0.000009" },
+                "title": "Gemini 3.5 Flash Search",
+                "description": "Premium grounded web research",
+                "input_modalities": ["text", "image", "audio", "video"],
+                "output_modalities": ["text"],
+                "max_reference_images": 3600,
+                "max_reference_videos": 10,
+                "capabilities": ["web_search", "code_execution"],
+                "tools": false,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1779753600000
+            }, {
+                "name": "midijourney",
+                "aliases": [],
+                "category": "text",
+                "brand": "Pollinations",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000005625", "promptCachedTokens": "0.00000005625",
+                    "completionTextTokens": "0.000003375" },
+                "title": "MIDIjourney",
+                "description": "AI Music Composition Assistant",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "is_specialized": true,
+                "added_date": 1759795200000
+            }, {
+                "name": "midijourney-large",
+                "aliases": [],
+                "category": "text",
+                "brand": "Pollinations",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000005", "promptCachedTokens": "0.0000005",
+                    "completionTextTokens": "0.00003" },
+                "title": "MIDIjourney Large",
+                "description": "Premium AI Music Composition",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "is_specialized": true,
+                "added_date": 1774224000000
+            }, {
+                "name": "claude-fast",
+                "aliases": ["claude-haiku-4.5", "claude-haiku"],
+                "category": "text",
+                "brand": "Anthropic",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000001", "promptCachedTokens": "0.0000001",
+                    "promptCacheWriteTokens": "0.00000125", "completionTextTokens": "0.000005" },
+                "title": "Claude Haiku 4.5",
+                "description": "Fast & Intelligent",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 20,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 200000,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1764547200000
+            }, {
+                "name": "claude",
+                "aliases": ["claude-sonnet-4.6", "claude-sonnet"],
+                "category": "text",
+                "brand": "Anthropic",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000003", "promptCachedTokens": "0.0000003",
+                    "promptCacheWriteTokens": "0.00000375", "completionTextTokens": "0.000015" },
+                "title": "Claude Sonnet 4.6",
+                "description": "Most Capable & Balanced",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 20,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 1000000,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1762300800000
+            }, {
+                "name": "claude-large",
+                "aliases": ["claude-opus-4.6", "claude-opus", "claude-opus-4.5"],
+                "category": "text",
+                "brand": "Anthropic",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000005", "promptCachedTokens": "0.0000005",
+                    "promptCacheWriteTokens": "0.00000625", "completionTextTokens": "0.000025" },
+                "title": "Claude Opus 4.6",
+                "description": "Most Intelligent Model",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 20,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 1000000,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1762732800000
+            }, {
+                "name": "claude-opus-4.7",
+                "aliases": [],
+                "category": "text",
+                "brand": "Anthropic",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000005", "promptCachedTokens": "0.0000005",
+                    "promptCacheWriteTokens": "0.00000625", "completionTextTokens": "0.000025" },
+                "title": "Claude Opus 4.7",
+                "description": "Most Intelligent Model",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 20,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 1000000,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1776816000000
+            }, {
+                "name": "claude-opus-4.8",
+                "aliases": [],
+                "category": "text",
+                "brand": "Anthropic",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000005", "promptCachedTokens": "0.0000005",
+                    "promptCacheWriteTokens": "0.00000625", "completionTextTokens": "0.000025" },
+                "title": "Claude Opus 4.8",
+                "description": "Most Intelligent Model",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 20,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 1000000,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1780012800000
+            }, {
+                "name": "perplexity-fast",
+                "aliases": ["sonar"],
+                "category": "text",
+                "brand": "Perplexity",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000001",
+                    "completionTextTokens": "0.000001" },
+                "title": "Perplexity Sonar",
+                "description": "Fast & affordable web search",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["web_search"],
+                "tools": false,
+                "context_length": 128000,
+                "is_specialized": false,
+                "added_date": 1762214400000
+            }, {
+                "name": "perplexity-deep",
+                "aliases": ["sonar-deep"],
+                "category": "text",
+                "brand": "Perplexity",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000001",
+                    "completionTextTokens": "0.000001" },
+                "title": "Perplexity Sonar",
+                "description": "Deep web search with broad grounding",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["web_search"],
+                "tools": false,
+                "context_length": 128000,
+                "is_specialized": false,
+                "added_date": 1780012800000
+            }, {
+                "name": "perplexity",
+                "aliases": ["sonar-pro", "perplexity-pro"],
+                "category": "text",
+                "brand": "Perplexity",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000003",
+                    "completionTextTokens": "0.000015" },
+                "title": "Perplexity Sonar Pro",
+                "description": "Advanced multi-source web search",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["web_search"],
+                "tools": false,
+                "context_length": 200000,
+                "is_specialized": false,
+                "added_date": 1780012800000
+            }, {
+                "name": "perplexity-reasoning",
+                "aliases": ["sonar-reasoning", "sonar-reasoning-pro"],
+                "category": "text",
+                "brand": "Perplexity",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000002",
+                    "completionTextTokens": "0.000008" },
+                "title": "Perplexity Sonar Reasoning",
+                "description": "Step-by-step reasoning with web search",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["reasoning", "web_search"],
+                "tools": false,
+                "reasoning": true,
+                "context_length": 128000,
+                "is_specialized": false,
+                "added_date": 1762214400000
+            }, {
+                "name": "kimi",
+                "aliases": ["kimi-k2.5", "kimi-k2p5", "kimi-reasoning", "kimi-large", "kimi-k2-thinking",
+                    "kimi-thinking"
+                ],
+                "category": "text",
+                "brand": "Moonshot AI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000006", "promptCachedTokens": "0.0000001",
+                    "completionTextTokens": "0.000003" },
+                "title": "Moonshot Kimi K2.5",
+                "description": "Flagship Agentic Model with CoT Reasoning",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 30,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 262000,
+                "is_specialized": false,
+                "added_date": 1768003200000
+            }, {
+                "name": "kimi-k2.6",
+                "aliases": ["kimi-k2p6"],
+                "category": "text",
+                "brand": "Moonshot AI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000095", "promptCachedTokens": "0.00000016",
+                    "completionTextTokens": "0.000004" },
+                "title": "Moonshot Kimi K2.6",
+                "description": "Flagship Agentic Model with CoT Reasoning",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 30,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 262000,
+                "is_specialized": false,
+                "added_date": 1776816000000
+            }, {
+                "name": "kimi-k2.7-code",
+                "aliases": ["kimi-k2.7", "kimi-k2p7"],
+                "category": "text",
+                "brand": "Moonshot AI",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000095", "promptCachedTokens": "0.00000019",
+                    "completionTextTokens": "0.000004" },
+                "title": "Moonshot Kimi K2.7 Code",
+                "description": "Agentic coding model with CoT reasoning",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 30,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 262144,
+                "is_specialized": false,
+                "added_date": 1781222400000
+            }, {
+                "name": "gemini-large",
+                "aliases": ["gemini-3.1-pro", "gemini-2.5-pro"],
+                "category": "text",
+                "brand": "Google",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000002", "promptCachedTokens": "0.0000002",
+                    "completionTextTokens": "0.000012" },
+                "title": "Gemini 3.1 Pro",
+                "description": "Most Intelligent Model with 1M Context (Preview)",
+                "input_modalities": ["text", "image", "audio", "video"],
+                "output_modalities": ["text"],
+                "max_reference_images": 3600,
+                "max_reference_videos": 10,
+                "capabilities": ["tool_calling", "reasoning", "web_search"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1763510400000
+            }, {
+                "name": "nova-fast",
+                "aliases": ["amazon-nova-micro", "nova-micro"],
+                "category": "text",
+                "brand": "Amazon",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000000035",
+                    "completionTextTokens": "0.00000014" },
+                "title": "Nova Micro",
+                "description": "Ultra Fast & Ultra Cheap",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 128000,
+                "is_specialized": false,
+                "added_date": 1759795200000
+            }, {
+                "name": "nova",
+                "aliases": ["nova-2-lite", "amazon-nova-2-lite", "nova-2"],
+                "category": "text",
+                "brand": "Amazon",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000033",
+                    "completionTextTokens": "0.00000275" },
+                "title": "Nova 2 Lite",
+                "description": "1M Context with Reasoning",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 20,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "added_date": 1774224000000
+            }, {
+                "name": "glm",
+                "aliases": ["glm-5", "glm-5.1", "glm-5p1", "glm-4.7", "glm-4p7"],
+                "category": "text",
+                "brand": "Z.ai",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000001", "promptCachedTokens": "0.0000002",
+                    "completionTextTokens": "0.0000032" },
+                "title": "Z.ai GLM-5.1",
+                "description": "744B MoE, Long Context Reasoning & Agentic Workflows",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 198000,
+                "is_specialized": false,
+                "added_date": 1767657600000
+            }, {
+                "name": "llama",
+                "aliases": ["llama-3.3", "llama-3.3-70b", "llama-v3p3-70b-instruct"],
+                "category": "text",
+                "brand": "Meta",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000005325",
+                    "completionTextTokens": "0.0000005325" },
+                "title": "Meta Llama 3.3 70B",
+                "description": "Open-source dense model for general chat",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 131072,
+                "is_specialized": false,
+                "added_date": 1777593600000
+            }, {
+                "name": "llama-maverick",
+                "aliases": ["llama-4", "llama-4-maverick", "llama-maverick-17b",
+                    "llama-4-maverick-17b-128e-instruct-fp8"
+                ],
+                "category": "text",
+                "brand": "Meta",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000001875",
+                    "completionTextTokens": "0.00000075" },
+                "title": "Meta Llama 4 Maverick",
+                "description": "Open-source multimodal MoE with vision",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 1048576,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1777852800000
+            }, {
+                "name": "llama-scout",
+                "aliases": ["llama-4-scout", "llama-scout-17b", "llama-4-scout-17b-16e-instruct"],
+                "category": "text",
+                "brand": "Meta",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000008",
+                    "completionTextTokens": "0.0000003" },
+                "title": "Meta Llama 4 Scout",
+                "description": "Open-source MoE for long context & retrieval",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 327680,
+                "is_specialized": false,
+                "added_date": 1777852800000
+            }, {
+                "name": "minimax",
+                "aliases": ["minimax-m2.7", "minimax-m2p7", "minimax-m2.5", "minimax-m2p5"],
+                "category": "text",
+                "brand": "MiniMax",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000003", "promptCachedTokens": "0.00000006",
+                    "completionTextTokens": "0.0000012" },
+                "title": "MiniMax M2.7",
+                "description": "Coding, Agentic & Multi-Language",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 200000,
+                "is_specialized": false,
+                "added_date": 1767657600000
+            }, {
+                "name": "minimax-m3",
+                "aliases": ["minimax3", "minimax-3"],
+                "category": "text",
+                "brand": "MiniMax",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000003", "promptCachedTokens": "0.00000006",
+                    "completionTextTokens": "0.0000012" },
+                "title": "MiniMax M3",
+                "description": "Coding, agentic & 512K-context reasoning",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 30,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 524288,
+                "is_specialized": false,
+                "added_date": 1780358400000
+            }, {
+                "name": "mistral-large",
+                "aliases": ["mistral-large-3"],
+                "category": "text",
+                "brand": "Mistral",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.000000375", "promptCachedTokens": "0.0000000375",
+                    "completionTextTokens": "0.000001125" },
+                "title": "Mistral Large 3",
+                "description": "Premium Multilingual & Reasoning",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 256000,
+                "is_specialized": false,
+                "added_date": 1775692800000
+            }, {
+                "name": "polly",
+                "aliases": ["pollinations-ai", "polly-ai"],
+                "category": "text",
+                "brand": "Pollinations",
+                "pricing": { "currency": "pollen" },
+                "title": "Polly by @Itachi-1824",
+                "description": "Pollinations AI Assistant with GitHub, Code Search & Web Tools (Alpha)",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 3,
+                "capabilities": ["tool_calling", "reasoning", "web_search", "code_execution"],
+                "tools": true,
+                "reasoning": true,
+                "is_specialized": false,
+                "alpha": true,
+                "added_date": 1771891200000
+            }, {
+                "name": "qwen-coder-large",
+                "aliases": ["qwen3-coder-next"],
+                "category": "text",
+                "brand": "Qwen",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000011",
+                    "completionTextTokens": "0.0000008" },
+                "title": "Qwen3 Coder Next",
+                "description": "Advanced Code Generation",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "context_length": 262144,
+                "is_specialized": false,
+                "paid_only": true,
+                "added_date": 1774137600000
+            }, {
+                "name": "qwen-large",
+                "aliases": ["qwen3.7", "qwen3.7-plus", "qwen3p7-plus", "qwen3.6", "qwen3.6-plus", "qwen3p6-plus"],
+                "category": "text",
+                "brand": "Qwen",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000004", "promptCachedTokens": "0.00000008",
+                    "completionTextTokens": "0.0000016" },
+                "title": "Qwen3.7 Plus",
+                "description": "Multimodal agent intelligence (Fireworks)",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 30,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 262000,
+                "is_specialized": false,
+                "added_date": 1781222400000
+            }, {
+                "name": "qwen-vision",
+                "aliases": ["qwen3-vl", "qwen3-vl-30b-a3b-instruct", "qwen3-vl-instruct", "qwen3-vl-plus", "qwen-vl"],
+                "category": "text",
+                "brand": "Qwen",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000013",
+                    "completionTextTokens": "0.00000052" },
+                "title": "Qwen3 VL 30B A3B Instruct",
+                "description": "Fast vision-language model",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling"],
+                "tools": true,
+                "reasoning": false,
+                "context_length": 131072,
+                "is_specialized": false,
+                "added_date": 1774137600000
+            }, {
+                "name": "qwen-vision-pro",
+                "aliases": ["qwen3-vl-pro", "qwen3-vl-235b", "qwen3-vl-235b-a22b-thinking", "qwen-vl-pro"],
+                "category": "text",
+                "brand": "Qwen",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000026",
+                    "completionTextTokens": "0.0000026" },
+                "title": "Qwen3 VL 235B A22B Thinking",
+                "description": "Vision-Language Reasoning",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 262144,
+                "is_specialized": false,
+                "added_date": 1778803200000
+            }, {
+                "name": "step-flash",
+                "aliases": ["stepfun-flash", "step-3.7-flash", "step-flash-3.7"],
+                "category": "text",
+                "brand": "StepFun",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.0000002", "promptCachedTokens": "0.00000004",
+                    "completionTextTokens": "0.00000115" },
+                "title": "StepFun Step 3.7 Flash",
+                "description": "Fast multimodal reasoning model",
+                "input_modalities": ["text", "image"],
+                "output_modalities": ["text"],
+                "max_reference_images": 10,
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 256000,
+                "is_specialized": false,
+                "added_date": 1780012800000
+            }, {
+                "name": "step-3.5-flash",
+                "aliases": ["stepfun-3.5-flash", "step-flash-3.5"],
+                "category": "text",
+                "brand": "StepFun",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000009", "promptCachedTokens": "0.00000002",
+                    "completionTextTokens": "0.0000003" },
+                "title": "StepFun Step 3.5 Flash",
+                "description": "Fast text reasoning model",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": ["tool_calling", "reasoning"],
+                "tools": true,
+                "reasoning": true,
+                "context_length": 262144,
+                "is_specialized": false,
+                "added_date": 1780012800000
+            }, {
+                "name": "qwen-safety",
+                "aliases": ["qwen3guard-gen-8b"],
+                "category": "text",
+                "brand": "Qwen",
+                "pricing": { "currency": "pollen", "promptTextTokens": "0.00000001",
+                    "completionTextTokens": "0.00000001" },
+                "title": "Qwen3Guard 8B",
+                "description": "Content Safety & Moderation",
+                "input_modalities": ["text"],
+                "output_modalities": ["text"],
+                "capabilities": [],
+                "is_specialized": true,
+                "added_date": 1771113600000
+            }
+        ];
+
+        // ================================================================
+        //  2.  STATE
+        // ================================================================
+        let state = {
+            currentModel: allModels[0],
+            systemPrompt: "",
+            apiKey: "",
+            conversations: [],
+            currentConversationId: null,
+            chatCounter: 0,
+            pinnedChats: [],
+            isAiTyping: false,
+            chatFontSize: 14,
+            sidebarHidden: true,
+            uploadedImages: [] // [{ dataUrl, fileName, status }]
+        };
+
+        // ================================================================
+        //  3.  DOM REFS
+        // ================================================================
+        const $ = id => document.getElementById(id);
+        const els = {
+            body: document.body,
+            sidebar: $('sidebar'),
+            sidebarToggleBtn: $('sidebarToggleBtn'),
+            modelDropdown: $('modelDropdown'),
+            modelDropdownToggle: $('modelDropdownToggle'),
+            selectedModel: $('selectedModel'),
+            modelMenu: $('modelMenu'),
+            chatArea: $('chatArea'),
+            messageInput: $('messageInput'),
+            sendBtn: $('sendBtn'),
+            clearChatBtn: $('clearChatBtn'),
+            exportChatBtn: $('exportChatBtn'),
+            settingsBtn: $('settingsBtn'),
+            settingsModal: $('settingsModal'),
+            closeSettingsModal: $('closeSettingsModal'),
+            cancelSettingsBtn: $('cancelSettingsBtn'),
+            saveSettingsBtn: $('saveSettingsBtn'),
+            systemPrompt: $('systemPrompt'),
+            apiKeyInput: $('apiKeyInput'),
+            newChatBtn: $('newChatBtn'),
+            chatList: $('chatList'),
+            clearAllBtn: $('clearAllBtn'),
+            searchInput: $('searchInput'),
+            fontSizeIncreaseBtn: $('fontSizeIncreaseBtn'),
+            fontSizeDecreaseBtn: $('fontSizeDecreaseBtn'),
+            particles: $('particles'),
+            fileInput: $('fileInput'),
+            uploadBtn: $('uploadBtn'),
+            imagePreviews: $('imagePreviews'),
+            errorToast: $('errorToast'),
+            errorTitle: $('errorTitle'),
+            errorDetail: $('errorDetail'),
+            errorSuggestion: $('errorSuggestion'),
+            errorCloseBtn: $('errorCloseBtn'),
+            refreshModelsBtn: $('refreshModelsBtn'),
+            refreshIcon: $('refreshIcon'),
+            refreshBtnText: $('refreshBtnText'),
+            refreshStatus: $('refreshStatus'),
+        };
+
+        // ================================================================
+        //  4.  HELPERS
+        // ================================================================
+        function escapeHtml(s) {
+            return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+        }
+
+        function formatTime(d) {
+            return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+        }
+
+        function scrollToBottom() {
+            els.chatArea.scrollTop = els.chatArea.scrollHeight;
+        }
+
+        function getCurrentConversation() {
+            return state.conversations.find(c => c.id === state.currentConversationId) || null;
+        }
+
+        function getModelByName(name) {
+            return allModels.find(m => m.name === name) || allModels[0];
+        }
+
+        function formatContextLength(len) {
+            if (!len) return '';
+            if (len >= 1000000) return (len / 1000000).toFixed(1) + 'M';
+            if (len >= 1000) return (len / 1000).toFixed(0) + 'K';
+            return String(len);
+        }
+
+        function getModelCapabilityTags(model) {
+            const tags = [];
+            if (model.reasoning) tags.push({ label: 'reasoning', cls: 'reasoning' });
+            if (model.vision || (model.input_modalities && model.input_modalities.includes('image'))) tags.push({ label: 'vision',
+                    cls: 'vision' });
+            if (model.audio || (model.input_modalities && model.input_modalities.includes('audio'))) tags.push({ label: 'audio',
+                    cls: 'audio' });
+            if (model.capabilities && model.capabilities.includes('web_search')) tags.push({ label: 'search', cls: 'search' });
+            if (model.tools || (model.capabilities && model.capabilities.includes('tool_calling'))) tags.push({ label: 'tools',
+                    cls: 'tools' });
+            if (model.capabilities && model.capabilities.includes('code_execution')) tags.push({ label: 'code', cls: 'code' });
+            if (model.paid_only) tags.push({ label: '💰 Paid', cls: 'paid' });
+            if (model.alpha) tags.push({ label: 'alpha', cls: 'alpha' });
+            if (model.is_specialized) tags.push({ label: 'special', cls: 'special' });
+            return tags;
+        }
+
+        // ================================================================
+        //  5.  LOCAL STORAGE  (API key stored separately)
+        // ================================================================
+        function saveState() {
+            // Save everything except apiKey in the main state
+            const data = { ...state };
+            data.uploadedImages = [];
+            delete data.apiKey; // do not store apiKey in the main state object
+            localStorage.setItem('aiChatState', JSON.stringify(data));
+            // Save apiKey separately
+            localStorage.setItem('apiKey', state.apiKey || '');
+        }
+
+        function loadState() {
+            // Load apiKey from its own key
+            const apiKey = localStorage.getItem('apiKey');
+            if (apiKey !== null) state.apiKey = apiKey;
+
+            const raw = localStorage.getItem('aiChatState');
+            if (!raw) return;
+            try {
+                const parsed = JSON.parse(raw);
+                // Merge but skip apiKey (it's stored separately)
+                const { apiKey: _, ...rest } = parsed;
+                state = { ...state, ...rest };
+                // Ensure currentModel is valid
+                const found = allModels.find(m => m.name === parsed.currentModel?.name);
+                if (found) state.currentModel = found;
+                else state.currentModel = allModels[0];
+                // apiKey already set from localStorage
+            } catch (_) {}
+        }
+
+        // ================================================================
+        //  6.  PARTICLES
+        // ================================================================
+        function createParticles() {
+            for (let i = 0; i < 25; i++) {
+                const p = document.createElement('div');
+                p.className = 'particle';
+                p.style.left = Math.random() * 100 + 'vw';
+                p.style.top = Math.random() * 100 + 'vh';
+                p.style.opacity = Math.random() * 0.3 + 0.05;
+                const size = Math.random() * 4 + 1;
+                p.style.width = size + 'px';
+                p.style.height = size + 'px';
+                p.style.animationDuration = Math.random() * 30 + 15 + 's';
+                p.style.animationDelay = Math.random() * 8 + 's';
+                els.particles.appendChild(p);
+            }
+        }
+        window.addEventListener('load', createParticles);
+
+        // ================================================================
+        //  7.  FONT SIZE
+        // ================================================================
+        function updateFontSize() {
+            document.documentElement.style.setProperty('--chat-font-size', state.chatFontSize + 'px');
+        }
+
+        function increaseFontSize() {
+            if (state.chatFontSize < 26) { state.chatFontSize += 2;
+                updateFontSize();
+                saveState(); }
+        }
+
+        function decreaseFontSize() {
+            if (state.chatFontSize > 10) { state.chatFontSize -= 2;
+                updateFontSize();
+                saveState(); }
+        }
+
+        // ================================================================
+        //  8.  SIDEBAR
+        // ================================================================
+        function updateSidebar() {
+            if (state.sidebarHidden) {
+                els.sidebar.classList.add('hidden');
+                els.body.classList.add('sidebar-hidden');
+                els.sidebarToggleBtn.innerHTML = '<i class="fas fa-bars"></i>';
+            } else {
+                els.sidebar.classList.remove('hidden');
+                els.body.classList.remove('sidebar-hidden');
+                els.sidebarToggleBtn.innerHTML = '<i class="fas fa-times"></i>';
+            }
+        }
+
+        function toggleSidebar() {
+            state.sidebarHidden = !state.sidebarHidden;
+            updateSidebar();
+            saveState();
+        }
+
+        // ================================================================
+        //  9.  MODEL DROPDOWN
+        // ================================================================
+        function populateModelDropdown() {
+            const groups = {};
+            allModels.forEach(m => {
+                const g = m.brand || 'Other';
+                if (!groups[g]) groups[g] = [];
+                groups[g].push(m);
+            });
+
+            els.modelMenu.innerHTML = '';
+            for (const [group, models] of Object.entries(groups)) {
+                const header = document.createElement('div');
+                header.className = 'dropdown-group';
+                header.textContent = group;
+                els.modelMenu.appendChild(header);
+
+                models.forEach(m => {
+                    const item = document.createElement('div');
+                    item.className = 'dropdown-item';
+
+                    const nameSpan = document.createElement('span');
+                    nameSpan.className = 'model-name';
+                    nameSpan.textContent = m.title || m.name;
+
+                    const descSpan = document.createElement('span');
+                    descSpan.className = 'model-desc';
+                    descSpan.textContent = m.description || '';
+
+                    const tagsDiv = document.createElement('div');
+                    tagsDiv.className = 'model-tags';
+
+                    const tagData = getModelCapabilityTags(m);
+                    tagData.forEach(t => {
+                        const span = document.createElement('span');
+                        span.className = 'model-tag ' + t.cls;
+                        span.textContent = t.label;
+                        tagsDiv.appendChild(span);
+                    });
+
+                    if (m.context_length) {
+                        const ctx = document.createElement('span');
+                        ctx.className = 'model-context';
+                        ctx.textContent = '· ' + formatContextLength(m.context_length) + ' ctx';
+                        tagsDiv.appendChild(ctx);
+                    }
+
+                    item.appendChild(nameSpan);
+                    item.appendChild(descSpan);
+                    item.appendChild(tagsDiv);
+                    item.dataset.modelName = m.name;
+                    item.addEventListener('click', () => {
+                        selectModel(m);
+                        els.modelMenu.classList.remove('show');
+                    });
+                    els.modelMenu.appendChild(item);
+                });
+            }
+
+            els.selectedModel.textContent = state.currentModel.title || state.currentModel.name;
+        }
+
+        function selectModel(model) {
+            state.currentModel = model;
+            els.selectedModel.textContent = model.title || model.name;
+            saveState();
+        }
+
+        // ================================================================
+        //  10. CONVERSATIONS
+        // ================================================================
+        function createNewConversation() {
+            state.chatCounter++;
+            const id = Date.now().toString() + '-' + state.chatCounter;
+            const conv = { id, title: 'New Chat', messages: [] };
+            state.conversations.push(conv);
+            state.currentConversationId = id;
+            renderConversationList();
+            renderCurrentConversation();
+            saveState();
+            if (window.innerWidth <= 768) {
+                state.sidebarHidden = true;
+                updateSidebar();
+            }
+            clearUploadedImages();
+        }
+
+        function deleteConversation(id) {
+            state.pinnedChats = state.pinnedChats.filter(p => p !== id);
+            state.conversations = state.conversations.filter(c => c.id !== id);
+            if (state.currentConversationId === id) {
+                state.currentConversationId = state.conversations.length ? state.conversations[0].id : null;
+                if (!state.currentConversationId) createNewConversation();
+            }
+            renderConversationList();
+            renderCurrentConversation();
+            saveState();
+        }
+
+        function togglePinChat(id) {
+            if (state.pinnedChats.includes(id)) {
+                state.pinnedChats = state.pinnedChats.filter(p => p !== id);
+            } else {
+                state.pinnedChats.push(id);
+            }
+            saveState();
+            renderConversationList();
+        }
+
+        function clearAllConversations() {
+            if (!confirm('Delete all conversations? This cannot be undone.')) return;
+            state.conversations = [];
+            state.currentConversationId = null;
+            state.pinnedChats = [];
+            state.chatCounter = 0;
+            createNewConversation();
+            saveState();
+        }
+
+        function clearCurrentChat() {
+            const conv = getCurrentConversation();
+            if (conv) { conv.messages = [];
+                renderCurrentConversation();
+                saveState(); }
+            clearUploadedImages();
+        }
+
+        function renderConversationList() {
+            els.chatList.innerHTML = '';
+            const pinned = state.conversations.filter(c => state.pinnedChats.includes(c.id));
+            const unpinned = state.conversations.filter(c => !state.pinnedChats.includes(c.id));
+            const sorted = [...pinned, ...unpinned];
+
+            if (!sorted.length) {
+                const div = document.createElement('div');
+                div.className = 'no-results';
+                div.textContent = 'No sessions yet. Start a new one!';
+                els.chatList.appendChild(div);
+                return;
+            }
+
+            sorted.forEach(conv => {
+                const item = document.createElement('div');
+                item.className = 'chat-item' + (conv.id === state.currentConversationId ? ' active' : '');
+
+                const icon = document.createElement('div');
+                icon.className = 'chat-item-icon';
+                icon.innerHTML =
+                    `<svg viewBox="0 0 1024 1024" width="28" height="28"><path d="M512 1023.9c-23.4 0-229-14.4-229-512S488.5 0 512 0c105.6 0 228.9 134.1 228.9 512S617.6 1023.9 512 1023.9zm0-968.6c-69.8 0-173.7 121.6-173.7 456.7S442.2 968.5 512 968.5c60 0 173.6-95.5 173.6-456.7S572.1 55.3 512 55.3z" fill="#0099ff"/><path d="M218.9 854.8c-28.5 0-52.1-3.5-71.4-8.6-43.5-11.7-77.3-35.4-95.3-66.8-11.7-20.5-101.4-207.2 345.3-467.2C652.1 164 799.2 158.1 877.6 179.1c43.3 11.6 76.8 34.9 94.2 65.5 52.7 92-6 269.6-345.2 467.1-191.9 111.7-322 143.2-407.7 143.2zm585.6-629.2c-72.5 0-192.9 25.9-379.3 134.5C123 536 65.3 690.7 100.2 751.8c6.2 10.7 22.3 30.3 61.6 40.9 55.1 14.6 185 17.7 436.9-129 325.9-189.8 355-339.2 325-391.8-5.9-10.2-21.5-29-60.5-39.5-14.4-3.8-33.7-6.9-58.7-6.9z" fill="#0099ff"/><path d="M805.1 854.8c-85.7 0-215.8-31.5-407.6-143.2C58.3 514.1-.4 336.6 52.2 244.5c17.5-30.6 51-53.9 94.3-65.5 78.7-21.1 225.7-14.9 480 133.2 446.7 260.1 356.9 446.7 345.2 467.1-18 31.4-51.8 55.2-95.3 66.8-19.3 5.3-42.9 8.8-71.4 8.8zM100.2 272c-30 52.6-.8 202.1 325.1 391.8 251.9 146.7 381.9 143.7 436.9 129 39.3-10.5 55.5-30.1 61.6-40.9 34.9-61.1-22.8-215.8-325.1-391.8C348.1 214.2 216.9 217.6 160.8 232.5c-39 10.5-54.7 29.2-60.6 39.5z" fill="#0099ff"/></svg>`;
+
+                const title = document.createElement('div');
+                title.className = 'chat-item-title';
+                title.textContent = conv.title;
+
+                const actions = document.createElement('div');
+                actions.className = 'chat-item-actions';
+
+                const pinBtn = document.createElement('button');
+                pinBtn.className = 'chat-item-pin' + (state.pinnedChats.includes(conv.id) ? ' pinned' : '');
+                pinBtn.innerHTML = '<i class="fas fa-thumbtack"></i>';
+                pinBtn.addEventListener('click', e => { e.stopPropagation();
+                    togglePinChat(conv.id); });
+
+                const delBtn = document.createElement('button');
+                delBtn.className = 'chat-item-delete';
+                delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                delBtn.addEventListener('click', e => { e.stopPropagation();
+                    deleteConversation(conv.id); });
+
+                actions.appendChild(pinBtn);
+                actions.appendChild(delBtn);
+
+                item.appendChild(icon);
+                item.appendChild(title);
+                item.appendChild(actions);
+
+                item.addEventListener('click', () => {
+                    state.currentConversationId = conv.id;
+                    renderConversationList();
+                    renderCurrentConversation();
+                    saveState();
+                    if (window.innerWidth <= 768) {
+                        state.sidebarHidden = true;
+                        updateSidebar();
+                    }
+                    clearUploadedImages();
+                });
+
+                els.chatList.appendChild(item);
+            });
+        }
+
+        // ================================================================
+        //  11. RENDER MESSAGES
+        // ================================================================
+        function renderCurrentConversation() {
+            const conv = getCurrentConversation();
+            if (!conv) {
+                els.chatArea.innerHTML =
+                    '<div style="text-align:center;color:var(--light-text);padding:40px 0;opacity:0.4;">Select or create a session</div>';
+                return;
+            }
+
+            const typing = document.getElementById('typingIndicator');
+            const hasTyping = !!typing;
+
+            els.chatArea.innerHTML = '';
+            let lastTime = null;
+
+            conv.messages.forEach(msg => {
+                if (msg.timestamp) {
+                    const d = new Date(msg.timestamp);
+                    const t = formatTime(d);
+                    if (!lastTime || t !== lastTime) {
+                        const wrap = document.createElement('div');
+                        wrap.style.textAlign = 'center';
+                        wrap.style.margin = '8px 0';
+                        const span = document.createElement('span');
+                        span.className = 'message-time';
+                        span.textContent = t;
+                        wrap.appendChild(span);
+                        els.chatArea.appendChild(wrap);
+                        lastTime = t;
+                    }
+                }
+
+                const div = document.createElement('div');
+                div.className = 'message message-' + (msg.role === 'user' ? 'user' : 'ai');
+
+                const avatar = document.createElement('div');
+                avatar.className = 'message-avatar';
+                if (msg.role === 'user') {
+                    avatar.innerHTML = generateUserAvatar();
+                } else {
+                    avatar.innerHTML = getAiAvatar();
+                }
+                div.appendChild(avatar);
+
+                const bubble = document.createElement('div');
+                bubble.className = 'message-bubble';
+
+                const text = document.createElement('div');
+                text.className = 'message-text';
+
+                let content = msg.content || '';
+
+                // Render image attachments in user messages
+                if (msg.role === 'user' && msg.images && msg.images.length) {
+                    const imgWrap = document.createElement('div');
+                    imgWrap.style.display = 'flex';
+                    imgWrap.style.flexWrap = 'wrap';
+                    imgWrap.style.gap = '4px';
+                    imgWrap.style.marginBottom = '6px';
+                    msg.images.forEach(url => {
+                        const img = document.createElement('img');
+                        img.src = url;
+                        img.style.maxWidth = '120px';
+                        img.style.maxHeight = '120px';
+                        img.style.borderRadius = '4px';
+                        img.style.border = '1px solid var(--border-color)';
+                        img.style.objectFit = 'cover';
+                        imgWrap.appendChild(img);
+                    });
+                    text.appendChild(imgWrap);
+                }
+
+                // code blocks
+                const blocks = [];
+                content = content.replace(/```([^`]*?)```/gs, (match, code) => {
+                    const id = 'cb-' + blocks.length;
+                    blocks.push({ id, code: code.trim() });
+                    return '[' + id + ']';
+                });
+                content = content.replace(/`([^`]+)`/g, (m, c) => '<code>' + escapeHtml(c) + '</code>');
+                for (const b of blocks) {
+                    const type = detectCodeType(b.code);
+                    const preview = createCodePreview(b.code, type);
+                    content = content.replace(
+                        '[' + b.id + ']',
+                        '<pre>' + escapeHtml(b.code) +
+                        '</pre><button class="code-preview-btn">Preview Code</button><div class="code-preview">' +
+                        preview + '</div>'
+                    );
+                }
+
+                const textNode = document.createElement('div');
+                textNode.innerHTML = content;
+                text.appendChild(textNode);
+                bubble.appendChild(text);
+
+                if (msg.role === 'assistant' || msg.role === 'system') {
+                    const acts = document.createElement('div');
+                    acts.className = 'message-actions';
+
+                    const copy = document.createElement('div');
+                    copy.className = 'message-copy';
+                    copy.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                    copy.addEventListener('click', () => {
+                        navigator.clipboard.writeText(msg.content).then(() => {
+                            copy.innerHTML = '<i class="fas fa-check"></i> Copied';
+                            setTimeout(() => { copy.innerHTML = '<i class="fas fa-copy"></i> Copy'; },
+                            2000);
+                        }).catch(() => {});
+                    });
+                    acts.appendChild(copy);
+
+                    if (msg.model) {
+                        const mod = document.createElement('div');
+                        mod.className = 'message-model';
+                        mod.textContent = msg.model;
+                        acts.appendChild(mod);
+                    }
+                    bubble.appendChild(acts);
+                }
+
+                div.appendChild(bubble);
+                els.chatArea.appendChild(div);
+            });
+
+            if (hasTyping) addTypingIndicator();
+
+            setupCodePreviewButtons();
+            scrollToBottom();
+            renderConversationList();
+        }
+
+        function generateUserAvatar() {
+            const colors = ['#FFB900', '#FF8C00', '#F7630C', '#CA5010', '#DA3B01',
+                '#EF6950', '#D13438', '#FF4343', '#E74856', '#E81123'
+            ];
+            const c = colors[Math.floor(Math.random() * colors.length)];
+            return `<svg viewBox="0 0 100 100" width="34" height="34"><rect width="100" height="100" fill="${c}"/><circle cx="50" cy="35" r="18" fill="white"/><path d="M50 60C25 60 15 80 15 100h70c0-20-10-40-35-40z" fill="white"/></svg>`;
+        }
+
+        function getAiAvatar() {
+            return `<svg viewBox="0 0 1024 1024" width="34" height="34"><path d="M512 1023.9c-23.4 0-229-14.4-229-512S488.5 0 512 0c105.6 0 228.9 134.1 228.9 512S617.6 1023.9 512 1023.9zm0-968.6c-69.8 0-173.7 121.6-173.7 456.7S442.2 968.5 512 968.5c60 0 173.6-95.5 173.6-456.7S572.1 55.3 512 55.3z" fill="#0099ff"/><path d="M218.9 854.8c-28.5 0-52.1-3.5-71.4-8.6-43.5-11.7-77.3-35.4-95.3-66.8-11.7-20.5-101.4-207.2 345.3-467.2C652.1 164 799.2 158.1 877.6 179.1c43.3 11.6 76.8 34.9 94.2 65.5 52.7 92-6 269.6-345.2 467.1-191.9 111.7-322 143.2-407.7 143.2zm585.6-629.2c-72.5 0-192.9 25.9-379.3 134.5C123 536 65.3 690.7 100.2 751.8c6.2 10.7 22.3 30.3 61.6 40.9 55.1 14.6 185 17.7 436.9-129 325.9-189.8 355-339.2 325-391.8-5.9-10.2-21.5-29-60.5-39.5-14.4-3.8-33.7-6.9-58.7-6.9z" fill="#0099ff"/><path d="M805.1 854.8c-85.7 0-215.8-31.5-407.6-143.2C58.3 514.1-.4 336.6 52.2 244.5c17.5-30.6 51-53.9 94.3-65.5 78.7-21.1 225.7-14.9 480 133.2 446.7 260.1 356.9 446.7 345.2 467.1-18 31.4-51.8 55.2-95.3 66.8-19.3 5.3-42.9 8.8-71.4 8.8zM100.2 272c-30 52.6-.8 202.1 325.1 391.8 251.9 146.7 381.9 143.7 436.9 129 39.3-10.5 55.5-30.1 61.6-40.9 34.9-61.1-22.8-215.8-325.1-391.8C348.1 214.2 216.9 217.6 160.8 232.5c-39 10.5-54.7 29.2-60.6 39.5z" fill="#0099ff"/></svg>`;
+        }
+
+        // ================================================================
+        //  12. CODE DETECTION & PREVIEW
+        // ================================================================
+        function detectCodeType(code) {
+            if (/<html|<body|<div|<span|<p|<h[1-6]|<br|<hr|<img|<a|<ul|<ol|<li/.test(code)) return 'html';
+            if (/\bfunction\b|\bvar\b|\bconst\b|\blet\b|=>/.test(code)) return 'javascript';
+            if (/\bdef\b|\bimport\b|\bprint\(/.test(code)) return 'python';
+            if (/<\?php/.test(code)) return 'php';
+            if (/\.class\b|public static void main/.test(code)) return 'java';
+            if (/#include/.test(code)) return 'c';
+            return 'text';
+        }
+
+        function createCodePreview(code, type) {
+            if (type === 'html') {
+                return `<iframe sandbox="allow-scripts" srcdoc="${escapeHtml(code)}"></iframe>`;
+            }
+            return `<div style="color:var(--light-text);font-size:13px;padding:8px;">Preview not available for ${type} code.</div>`;
+        }
+
+        function setupCodePreviewButtons() {
+            document.querySelectorAll('.code-preview-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const preview = this.nextElementSibling;
+                    preview.classList.toggle('show');
+                    this.textContent = preview.classList.contains('show') ? 'Hide Preview' : 'Preview Code';
+                });
+            });
+        }
+
+        // ================================================================
+        //  13. TYPING INDICATOR
+        // ================================================================
+        function addTypingIndicator() {
+            if (document.getElementById('typingIndicator')) return;
+            state.isAiTyping = true;
+            const div = document.createElement('div');
+            div.id = 'typingIndicator';
+            div.className = 'message message-ai';
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.innerHTML = getAiAvatar();
+            div.appendChild(avatar);
+
+            const bubble = document.createElement('div');
+            bubble.className = 'message-bubble';
+            const inner = document.createElement('div');
+            inner.className = 'typing-indicator';
+            inner.innerHTML =
+                '<span>AI Replying</span><div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>';
+            bubble.appendChild(inner);
+            div.appendChild(bubble);
+
+            els.chatArea.appendChild(div);
+            scrollToBottom();
+        }
+
+        function removeTypingIndicator() {
+            state.isAiTyping = false;
+            const el = document.getElementById('typingIndicator');
+            if (el) el.remove();
+        }
+
+        // ================================================================
+        //  14. ERROR TOAST
+        // ================================================================
+        function showError(title, detail, suggestion) {
+            els.errorTitle.textContent = title;
+            els.errorDetail.innerHTML = detail;
+            if (suggestion) {
+                els.errorSuggestion.textContent = suggestion;
+                els.errorSuggestion.style.display = 'block';
+            } else {
+                els.errorSuggestion.style.display = 'none';
+            }
+            els.errorToast.classList.add('show');
+            clearTimeout(window._errorToastTimer);
+            window._errorToastTimer = setTimeout(() => {
+                els.errorToast.classList.remove('show');
+            }, 10000);
+        }
+
+        function hideError() {
+            els.errorToast.classList.remove('show');
+        }
+
+        // ================================================================
+        //  15. IMAGE UPLOAD (with format validation)
+        // ================================================================
+        function clearUploadedImages() {
+            state.uploadedImages = [];
+            renderImagePreviews();
+        }
+
+        function renderImagePreviews() {
+            els.imagePreviews.innerHTML = '';
+            if (!state.uploadedImages.length) return;
+
+            state.uploadedImages.forEach((img, idx) => {
+                const item = document.createElement('div');
+                item.className = 'preview-item';
+
+                const imgEl = document.createElement('img');
+                imgEl.src = img.dataUrl;
+                imgEl.alt = img.fileName || 'image';
+                item.appendChild(imgEl);
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'remove-img';
+                removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                removeBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    state.uploadedImages.splice(idx, 1);
+                    renderImagePreviews();
+                });
+                item.appendChild(removeBtn);
+
+                els.imagePreviews.appendChild(item);
+            });
+        }
+
+        async function handleFileUpload(files) {
+            if (!files || !files.length) return;
+
+            // ---- NEW: Validate image format ----
+            const allowedTypes = ['image/webp', 'image/gif', 'image/jpeg', 'image/png'];
+            for (const file of files) {
+                if (!allowedTypes.includes(file.type)) {
+                    showError(
+                        'Unsupported image format',
+                        `"${file.name}" has format "${file.type || 'unknown'}".`,
+                        'Please use WebP, GIF, JPEG, or PNG images. Convert your image and try again.'
+                    );
+                    // Do not add this file; continue to next file
+                    // But we need to skip the entire batch? We can skip this file and continue.
+                    // However, to avoid partial uploads, we can reject the whole batch.
+                    // For simplicity, we reject the entire batch and show the error.
+                    // Reset file input so they can choose again.
+                    els.fileInput.value = '';
+                    return; // reject whole batch
+                }
+            }
+
+            const model = state.currentModel;
+            const supportsVision = model.vision || (model.input_modalities && model.input_modalities.includes('image'));
+            if (!supportsVision) {
+                showError(
+                    'Vision not supported',
+                    `The model "${model.title || model.name}" does not support image input.`,
+                    'Please select a vision-capable model like GPT-5.4, Gemini, Claude, or Qwen-VL.'
+                );
+                return;
+            }
+
+            const maxImages = model.max_reference_images || 10;
+            if (state.uploadedImages.length + files.length > maxImages) {
+                showError(
+                    'Too many images',
+                    `This model supports up to ${maxImages} images. You have ${state.uploadedImages.length} already.`,
+                    `Remove some images or select a model with higher image limits.`
+                );
+                return;
+            }
+
+            const apiKey = state.apiKey.trim();
+
+            for (const file of files) {
+                try {
+                    const dataUrl = await readFileAsDataURL(file);
+                    let finalUrl = dataUrl;
+                    if (apiKey) {
+                        try {
+                            const uploadedUrl = await uploadToMedia(file, apiKey);
+                            if (uploadedUrl) finalUrl = uploadedUrl;
+                        } catch (uploadErr) {
+                            console.warn('Media upload failed, using data URL:', uploadErr);
+                        }
+                    }
+
+                    state.uploadedImages.push({
+                        dataUrl: finalUrl,
+                        fileName: file.name,
+                        status: 'ready'
+                    });
+                } catch (err) {
+                    showError(
+                        'Failed to read image',
+                        escapeHtml(err.message || 'Unknown error'),
+                        'Try a different image or format.'
+                    );
+                }
+            }
+
+            renderImagePreviews();
+            els.messageInput.focus();
+        }
+
+        function readFileAsDataURL(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(new Error('Failed to read file'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function uploadToMedia(file, apiKey) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const resp = await fetch('https://media.pollinations.ai/upload', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer ' + apiKey
+                },
+                body: formData
+            });
+
+            if (!resp.ok) {
+                let errMsg = `Upload failed (${resp.status})`;
+                try {
+                    const errJson = await resp.json();
+                    if (errJson.error?.message) errMsg = errJson.error.message;
+                } catch (_) {}
+                throw new Error(errMsg);
+            }
+
+            const result = await resp.json();
+            if (result.url) return result.url;
+            if (result.hash) return 'https://media.pollinations.ai/' + result.hash;
+            throw new Error('Unexpected upload response');
+        }
+
+        // ================================================================
+        //  16. SEND MESSAGE
+        // ================================================================
+        async function sendMessage() {
+            const input = els.messageInput.value.trim();
+            const hasImages = state.uploadedImages.length > 0;
+
+            if (!input && !hasImages) return;
+            if (state.isAiTyping) return;
+
+            let conv = getCurrentConversation();
+            if (!conv) { createNewConversation();
+                conv = getCurrentConversation(); }
+
+            if (conv.messages.length === 0 && input) {
+                conv.title = input.length > 30 ? input.slice(0, 30) + '…' : input;
+            }
+
+            const ts = new Date();
+            const imageUrls = state.uploadedImages.map(img => img.dataUrl);
+
+            const userMsg = {
+                role: 'user',
+                content: input || 'Describe these images.',
+                timestamp: ts.toISOString(),
+                images: imageUrls.length ? imageUrls : undefined
+            };
+            conv.messages.push(userMsg);
+
+            els.messageInput.value = '';
+            els.messageInput.style.height = 'auto';
+            clearUploadedImages();
+            renderCurrentConversation();
+            saveState();
+            scrollToBottom();
+
+            addTypingIndicator();
+
+            const apiMessages = [];
+            if (state.systemPrompt) {
+                apiMessages.push({ role: 'system', content: state.systemPrompt });
+            }
+
+            for (const m of conv.messages) {
+                if (m.role === 'user') {
+                    if (m.images && m.images.length) {
+                        const parts = [];
+                        if (m.content) parts.push({ type: 'text', text: m.content });
+                        for (const url of m.images) {
+                            parts.push({ type: 'image_url', image_url: { url: url } });
+                        }
+                        apiMessages.push({ role: 'user', content: parts });
+                    } else {
+                        apiMessages.push({ role: 'user', content: m.content });
+                    }
+                } else if (m.role === 'assistant') {
+                    apiMessages.push({ role: 'assistant', content: m.content });
+                }
+            }
+
+            const modelName = state.currentModel.name;
+            const apiKey = state.apiKey.trim() || '';
+
+            try {
+                const resp = await fetch('https://gen.pollinations.ai/v1/chat/completions', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(apiKey ? { 'Authorization': 'Bearer ' + apiKey } : {})
+                    },
+                    body: JSON.stringify({
+                        model: modelName,
+                        messages: apiMessages,
+                        stream: true
+                    })
+                });
+
+                if (!resp.ok) {
+                    let errMsg = `HTTP ${resp.status}`;
+                    let errDetail = '';
+                    let suggestion = '';
+
+                    try {
+                        const errJson = await resp.json();
+                        if (errJson.error) {
+                            errMsg = errJson.error.code || errMsg;
+                            errDetail = errJson.error.message || '';
+                            if (errJson.error.type === 'safety_error') {
+                                suggestion = 'Your request was blocked by safety filters. Try rephrasing.';
+                            } else if (resp.status === 401) {
+                                suggestion = 'Invalid API key. Check your key in Settings.';
+                            } else if (resp.status === 402) {
+                                suggestion = 'Insufficient pollen balance. Top up at enter.pollinations.ai.';
+                            } else if (resp.status === 403) {
+                                suggestion = 'API key lacks required permissions.';
+                            }
+                        }
+                    } catch (_) {
+                        try {
+                            const text = await resp.text();
+                            if (text) errDetail = text.substring(0, 200);
+                        } catch (_2) {}
+                    }
+
+                    if (resp.status === 400 && !errDetail) {
+                        errDetail = 'Bad request. Check your prompt and image URLs.';
+                        suggestion = 'Try a shorter prompt or different images.';
+                    } else if (resp.status === 429) {
+                        errDetail = 'Rate limit exceeded. Please wait and try again.';
+                        suggestion = 'Public keys have rate limits. Use a secret key for higher limits.';
+                    } else if (resp.status === 500) {
+                        errDetail = 'The server encountered an error. Please try again later.';
+                        suggestion = 'This is usually temporary. Try again in a few moments.';
+                    }
+
+                    const model = state.currentModel;
+                    const supportsVision = model.vision || (model.input_modalities && model.input_modalities.includes(
+                    'image'));
+                    if (imageUrls.length && !supportsVision) {
+                        suggestion = 'This model does not support image input. Try a vision-capable model.';
+                    }
+
+                    throw new Error(errMsg + (errDetail ? ': ' + errDetail : ''));
+                }
+
+                const reader = resp.body.getReader();
+                const decoder = new TextDecoder();
+                let full = '';
+                let buffer = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buffer += decoder.decode(value, { stream: true });
+                    const lines = buffer.split('\n');
+                    buffer = lines.pop() || '';
+
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed || trimmed === 'data: [DONE]') continue;
+                        if (trimmed.startsWith('data: ')) {
+                            try {
+                                const json = JSON.parse(trimmed.slice(6));
+                                const delta = json.choices?.[0]?.delta?.content;
+                                if (delta) {
+                                    full += delta;
+                                    updateTypingContent(full);
+                                }
+                            } catch (_) { /* ignore malformed JSON */ }
+                        }
+                    }
+                }
+
+                removeTypingIndicator();
+                const respTs = new Date();
+                conv.messages.push({
+                    role: 'assistant',
+                    content: full || '(empty response)',
+                    model: state.currentModel.title || state.currentModel.name,
+                    timestamp: respTs.toISOString()
+                });
+                renderCurrentConversation();
+                saveState();
+                scrollToBottom();
+
+            } catch (err) {
+                removeTypingIndicator();
+                const errTs = new Date();
+                const errorMsg = err.message || 'Unknown error';
+
+                let detail = errorMsg;
+                let suggestion = 'Check your API key and network connection.';
+
+                if (errorMsg.includes('401') || errorMsg.includes('auth')) {
+                    suggestion = 'Your API key may be invalid. Check Settings and try again.';
+                } else if (errorMsg.includes('402') || errorMsg.includes('balance')) {
+                    suggestion = 'Your pollen balance may be low. Top up at enter.pollinations.ai.';
+                } else if (errorMsg.includes('safety')) {
+                    suggestion = 'Your request was blocked by safety filters. Try rephrasing.';
+                } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+                    suggestion = 'Network error. Check your internet connection.';
+                } else if (errorMsg.includes('vision') || errorMsg.includes('image')) {
+                    suggestion = 'Try a model that supports image input like GPT-5.4, Gemini, or Claude.';
+                }
+
+                showError('Request Failed', escapeHtml(detail), suggestion);
+
+                conv.messages.push({
+                    role: 'system',
+                    content: '⚠️ Error: ' + errorMsg + '. Please try again or switch models.',
+                    model: state.currentModel.title || state.currentModel.name,
+                    timestamp: errTs.toISOString()
+                });
+                renderCurrentConversation();
+                saveState();
+                scrollToBottom();
+                console.error(err);
+            }
+        }
+
+        function updateTypingContent(text) {
+            let indicator = document.getElementById('typingIndicator');
+            if (!indicator) {
+                addTypingIndicator();
+                indicator = document.getElementById('typingIndicator');
+                if (!indicator) return;
+            }
+            const bubble = indicator.querySelector('.message-bubble');
+            if (!bubble) return;
+            const existingInner = bubble.querySelector('.typing-indicator');
+            if (existingInner) {
+                bubble.innerHTML = '';
+                const textDiv = document.createElement('div');
+                textDiv.className = 'message-text';
+                textDiv.textContent = text;
+                bubble.appendChild(textDiv);
+            } else {
+                const textDiv = bubble.querySelector('.message-text');
+                if (textDiv) textDiv.textContent = text;
+            }
+            scrollToBottom();
+        }
+
+        // ================================================================
+        //  17. EXPORT
+        // ================================================================
+        function exportChat() {
+            const conv = getCurrentConversation();
+            if (!conv || !conv.messages.length) { showError('No messages', 'There are no messages to export.',
+                    'Start a conversation first.'); return; }
+            let md = '# ' + conv.title + '\n\n';
+            for (const m of conv.messages) {
+                const role = m.role === 'user' ? 'User' : (m.role === 'system' ? 'System' : 'AI');
+                const model = m.model ? ' (' + m.model + ')' : '';
+                const time = m.timestamp ? ' [' + new Date(m.timestamp).toLocaleTimeString() + ']' : '';
+                md += '## ' + time + ' ' + role + model + '\n\n' + m.content + '\n\n';
+            }
+            const blob = new Blob([md], { type: 'text/markdown' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'chat-' + conv.id + '.md';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        }
+
+        // ================================================================
+        //  18. SETTINGS
+        // ================================================================
+        function openSettings() {
+            els.systemPrompt.value = state.systemPrompt || '';
+            els.apiKeyInput.value = state.apiKey || '';
+            els.settingsModal.classList.add('show');
+            updateRefreshStatus('Last updated: from local cache', '');
+        }
+
+        function closeSettings() {
+            els.settingsModal.classList.remove('show');
+        }
+
+        function saveSettings() {
+            state.systemPrompt = els.systemPrompt.value.trim();
+            state.apiKey = els.apiKeyInput.value.trim();
+            saveState(); // This will save apiKey separately
+            closeSettings();
+        }
+
+        // ================================================================
+        //  19. SEARCH
+        // ================================================================
+        function handleSearch() {
+            const term = els.searchInput.value.trim().toLowerCase();
+            if (!term) { renderConversationList(); return; }
+
+            const filtered = state.conversations.filter(c =>
+                c.title.toLowerCase().includes(term) ||
+                c.messages.some(m => m.content.toLowerCase().includes(term))
+            );
+
+            els.chatList.innerHTML = '';
+            if (!filtered.length) {
+                const div = document.createElement('div');
+                div.className = 'no-results';
+                div.textContent = 'No matching sessions.';
+                els.chatList.appendChild(div);
+                return;
+            }
+            const pinned = filtered.filter(c => state.pinnedChats.includes(c.id));
+            const unpinned = filtered.filter(c => !state.pinnedChats.includes(c.id));
+            [...pinned, ...unpinned].forEach(c => {
+                const item = document.createElement('div');
+                item.className = 'chat-item' + (c.id === state.currentConversationId ? ' active' : '');
+                const icon = document.createElement('div');
+                icon.className = 'chat-item-icon';
+                icon.innerHTML =
+                    `<svg viewBox="0 0 1024 1024" width="28" height="28"><path d="M512 1023.9c-23.4 0-229-14.4-229-512S488.5 0 512 0c105.6 0 228.9 134.1 228.9 512S617.6 1023.9 512 1023.9zm0-968.6c-69.8 0-173.7 121.6-173.7 456.7S442.2 968.5 512 968.5c60 0 173.6-95.5 173.6-456.7S572.1 55.3 512 55.3z" fill="#0099ff"/><path d="M218.9 854.8c-28.5 0-52.1-3.5-71.4-8.6-43.5-11.7-77.3-35.4-95.3-66.8-11.7-20.5-101.4-207.2 345.3-467.2C652.1 164 799.2 158.1 877.6 179.1c43.3 11.6 76.8 34.9 94.2 65.5 52.7 92-6 269.6-345.2 467.1-191.9 111.7-322 143.2-407.7 143.2zm585.6-629.2c-72.5 0-192.9 25.9-379.3 134.5C123 536 65.3 690.7 100.2 751.8c6.2 10.7 22.3 30.3 61.6 40.9 55.1 14.6 185 17.7 436.9-129 325.9-189.8 355-339.2 325-391.8-5.9-10.2-21.5-29-60.5-39.5-14.4-3.8-33.7-6.9-58.7-6.9z" fill="#0099ff"/><path d="M805.1 854.8c-85.7 0-215.8-31.5-407.6-143.2C58.3 514.1-.4 336.6 52.2 244.5c17.5-30.6 51-53.9 94.3-65.5 78.7-21.1 225.7-14.9 480 133.2 446.7 260.1 356.9 446.7 345.2 467.1-18 31.4-51.8 55.2-95.3 66.8-19.3 5.3-42.9 8.8-71.4 8.8zM100.2 272c-30 52.6-.8 202.1 325.1 391.8 251.9 146.7 381.9 143.7 436.9 129 39.3-10.5 55.5-30.1 61.6-40.9 34.9-61.1-22.8-215.8-325.1-391.8C348.1 214.2 216.9 217.6 160.8 232.5c-39 10.5-54.7 29.2-60.6 39.5z" fill="#0099ff"/></svg>`;
+                const title = document.createElement('div');
+                title.className = 'chat-item-title';
+                title.textContent = c.title;
+                const actions = document.createElement('div');
+                actions.className = 'chat-item-actions';
+                const pinBtn = document.createElement('button');
+                pinBtn.className = 'chat-item-pin' + (state.pinnedChats.includes(c.id) ? ' pinned' : '');
+                pinBtn.innerHTML = '<i class="fas fa-thumbtack"></i>';
+                pinBtn.addEventListener('click', e => { e.stopPropagation();
+                    togglePinChat(c.id); });
+                const delBtn = document.createElement('button');
+                delBtn.className = 'chat-item-delete';
+                delBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                delBtn.addEventListener('click', e => { e.stopPropagation();
+                    deleteConversation(c.id); });
+                actions.appendChild(pinBtn);
+                actions.appendChild(delBtn);
+                item.appendChild(icon);
+                item.appendChild(title);
+                item.appendChild(actions);
+                item.addEventListener('click', () => {
+                    state.currentConversationId = c.id;
+                    renderConversationList();
+                    renderCurrentConversation();
+                    saveState();
+                    if (window.innerWidth <= 768) { state.sidebarHidden = true;
+                        updateSidebar(); }
+                });
+                els.chatList.appendChild(item);
+            });
+        }
+
+        // ================================================================
+        //  20. REFRESH MODELS
+        // ================================================================
+        function updateRefreshStatus(msg, cls) {
+            els.refreshStatus.textContent = msg;
+            els.refreshStatus.className = 'refresh-status' + (cls ? ' ' + cls : '');
+        }
+
+        async function refreshModels() {
+            els.refreshModelsBtn.disabled = true;
+            els.refreshIcon.className = 'fas fa-spinner';
+            els.refreshBtnText.textContent = 'Loading…';
+            updateRefreshStatus('Fetching latest models…', 'loading');
+
+            try {
+                const resp = await fetch('https://gen.pollinations.ai/text/models', {
+                    headers: { 'Accept': 'application/json' }
+                });
+
+                if (!resp.ok) {
+                    let errMsg = `HTTP ${resp.status}`;
+                    try {
+                        const errJson = await resp.json();
+                        if (errJson.error?.message) errMsg = errJson.error.message;
+                    } catch (_) {}
+                    throw new Error(errMsg);
+                }
+
+                const data = await resp.json();
+
+                if (!Array.isArray(data) || !data.length) {
+                    throw new Error('API returned empty or invalid model list.');
+                }
+
+                const mapped = data
+                    .filter(m => (m.category === 'text' || !m.category) && m.name)
+                    .map(m => ({
+                        name: m.name || '',
+                        aliases: m.aliases || [],
+                        category: 'text',
+                        brand: m.brand || 'Pollinations',
+                        pricing: m.pricing || { currency: 'pollen' },
+                        title: m.title || m.name || '',
+                        description: m.description || '',
+                        input_modalities: m.input_modalities || ['text'],
+                        output_modalities: m.output_modalities || ['text'],
+                        max_reference_images: m.max_reference_images || 0,
+                        capabilities: m.capabilities || [],
+                        tools: m.tools || false,
+                        reasoning: m.reasoning || false,
+                        context_length: m.context_length || 0,
+                        is_specialized: m.is_specialized || false,
+                        paid_only: m.paid_only || false,
+                        alpha: m.alpha || false,
+                        added_date: m.added_date || Date.now(),
+                        ...m
+                    }));
+
+                if (!mapped.length) {
+                    throw new Error('No text models found in the API response.');
+                }
+
+                allModels = mapped;
+
+                const currentName = state.currentModel?.name;
+                const found = allModels.find(m => m.name === currentName);
+                if (found) {
+                    state.currentModel = found;
+                } else {
+                    state.currentModel = allModels[0];
+                }
+
+                populateModelDropdown();
+                els.selectedModel.textContent = state.currentModel.title || state.currentModel.name;
+
+                const now = new Date();
+                const ts = now.toLocaleString();
+                updateRefreshStatus(`✅ Updated: ${allModels.length} models loaded at ${ts}`, 'success');
+
+                showError(
+                    'Models Refreshed',
+                    `Successfully loaded ${allModels.length} text models from the API.`,
+                    'Your model list is now up to date with the latest pricing, capabilities, and paid-only status.'
+                );
+
+                saveState();
+
+            } catch (err) {
+                const msg = err.message || 'Unknown error';
+                updateRefreshStatus(`❌ Refresh failed: ${msg}`, 'error');
+                showError(
+                    'Model Refresh Failed',
+                    escapeHtml(msg),
+                    'Check your network connection and try again. The existing model list will be used.'
+                );
+                console.error('Model refresh error:', err);
+            } finally {
+                els.refreshModelsBtn.disabled = false;
+                els.refreshIcon.className = 'fas fa-sync-alt';
+                els.refreshBtnText.textContent = 'Refresh Models';
+            }
+        }
+
+        // ================================================================
+        //  21. INIT
+        // ================================================================
+        function init() {
+            loadState();
+            updateFontSize();
+            updateSidebar();
+
+            document.querySelectorAll('.prompt-example').forEach(el => {
+                el.addEventListener('click', () => {
+                    els.systemPrompt.value = el.dataset.prompt;
+                });
+            });
+
+            populateModelDropdown();
+            els.selectedModel.textContent = state.currentModel.title || state.currentModel.name;
+
+            if (!state.conversations.length || !state.currentConversationId) {
+                createNewConversation();
+            } else {
+                renderConversationList();
+                renderCurrentConversation();
+            }
+
+            els.sidebarToggleBtn.addEventListener('click', toggleSidebar);
+
+            els.modelDropdownToggle.addEventListener('click', (e) => {
+                e.stopPropagation();
+                els.modelMenu.classList.toggle('show');
+            });
+            document.addEventListener('click', () => els.modelMenu.classList.remove('show'));
+
+            els.sendBtn.addEventListener('click', sendMessage);
+            els.messageInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault();
+                    sendMessage(); }
+            });
+            els.messageInput.addEventListener('input', () => {
+                els.messageInput.style.height = 'auto';
+                els.messageInput.style.height = Math.min(els.messageInput.scrollHeight, 200) + 'px';
+            });
+
+            els.clearChatBtn.addEventListener('click', clearCurrentChat);
+            els.exportChatBtn.addEventListener('click', exportChat);
+            els.newChatBtn.addEventListener('click', createNewConversation);
+            els.clearAllBtn.addEventListener('click', clearAllConversations);
+            els.searchInput.addEventListener('input', handleSearch);
+
+            els.fontSizeIncreaseBtn.addEventListener('click', increaseFontSize);
+            els.fontSizeDecreaseBtn.addEventListener('click', decreaseFontSize);
+
+            els.settingsBtn.addEventListener('click', openSettings);
+            els.closeSettingsModal.addEventListener('click', closeSettings);
+            els.cancelSettingsBtn.addEventListener('click', closeSettings);
+            els.saveSettingsBtn.addEventListener('click', saveSettings);
+
+            els.settingsModal.addEventListener('click', (e) => {
+                if (e.target === els.settingsModal) closeSettings();
+            });
+
+            els.errorCloseBtn.addEventListener('click', hideError);
+
+            els.fileInput.addEventListener('change', (e) => {
+                if (e.target.files && e.target.files.length) {
+                    handleFileUpload(e.target.files);
+                    e.target.value = '';
+                }
+            });
+
+            els.refreshModelsBtn.addEventListener('click', refreshModels);
+
+            let dragCounter = 0;
+            const chatArea = els.chatArea;
+            chatArea.addEventListener('dragenter', (e) => {
+                e.preventDefault();
+                dragCounter++;
+                chatArea.style.border = '2px dashed var(--neon-blue)';
+                chatArea.style.borderRadius = '8px';
+            });
+            chatArea.addEventListener('dragleave', (e) => {
+                e.preventDefault();
+                dragCounter--;
+                if (dragCounter === 0) {
+                    chatArea.style.border = 'none';
+                }
+            });
+            chatArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+            });
+            chatArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dragCounter = 0;
+                chatArea.style.border = 'none';
+                const files = e.dataTransfer.files;
+                if (files && files.length) {
+                    handleFileUpload(files);
+                }
+            });
+
+            els.messageInput.focus();
+
+            console.log('🚀 FreeAI Chat loaded with', allModels.length, 'models');
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
